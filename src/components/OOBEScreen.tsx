@@ -8,7 +8,7 @@ interface OOBEScreenProps {
 }
 
 export const OOBEScreen = ({ onComplete }: OOBEScreenProps) => {
-  const [step, setStep] = useState<"welcome" | "region" | "time" | "display" | "sound" | "network" | "power" | "accessibility" | "notifications" | "background" | "privacy" | "advanced" | "storage" | "accounts" | "developer" | "security" | "performance" | "telemetry" | "personalization" | "survey" | "review" | "finish">("welcome");
+  const [step, setStep] = useState<"welcome" | "region" | "time" | "display" | "sound" | "network" | "power" | "accessibility" | "notifications" | "background" | "privacy" | "advanced" | "storage" | "accounts" | "developer" | "security" | "performance" | "telemetry" | "personalization" | "survey" | "finish">("welcome");
   const [region, setRegion] = useState("North America");
   const [timezone, setTimezone] = useState("UTC-5 (EST)");
   const [theme, setTheme] = useState<"dark" | "light">("dark");
@@ -94,8 +94,7 @@ export const OOBEScreen = ({ onComplete }: OOBEScreenProps) => {
     else if (step === "telemetry") setStep("personalization");
     else if (step === "personalization") setStep("advanced");
     else if (step === "advanced") setStep("survey");
-    else if (step === "survey") setStep("review");
-    else if (step === "review") setStep("finish");
+    else if (step === "survey") setStep("finish");
   };
   
   const handleBack = () => {
@@ -118,8 +117,7 @@ export const OOBEScreen = ({ onComplete }: OOBEScreenProps) => {
     else if (step === "personalization") setStep("telemetry");
     else if (step === "advanced") setStep("personalization");
     else if (step === "survey") setStep("advanced");
-    else if (step === "review") setStep("survey");
-    else if (step === "finish") setStep("review");
+    else if (step === "finish") setStep("survey");
   };
 
   const handleComplete = () => {
