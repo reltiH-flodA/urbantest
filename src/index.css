@@ -81,4 +81,8 @@
   .urbanshade-glow {
     box-shadow: 0 0 40px hsl(186 100% 50% / 0.15);
   }
+
+  .hover-scale {
+    @apply transition-transform duration-200 hover:scale-105;
+  }
 }

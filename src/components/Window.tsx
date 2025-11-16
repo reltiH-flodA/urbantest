@@ -15,6 +15,7 @@ export const Window = ({ title, children, zIndex, onClose, onFocus }: WindowProp
   const [isDragging, setIsDragging] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
   const [isMaximized, setIsMaximized] = useState(false);
+  const [isMinimized, setIsMinimized] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [resizeStart, setResizeStart] = useState({ x: 0, y: 0, width: 0, height: 0 });
   const [previousState, setPreviousState] = useState<{ position: { x: number; y: number }; size: { width: number; height: number } } | null>(null);
@@ -91,6 +92,11 @@ export const Window = ({ title, children, zIndex, onClose, onFocus }: WindowProp
     }
   };
 
+  const handleMinimize = () => {
+    setIsMinimized(true);
+    setTimeout(() => setIsMinimized(false), 100);
+  };
+
   const handleResizeStart = (e: React.MouseEvent) => {
     e.stopPropagation();
     setIsResizing(true);
@@ -105,13 +111,16 @@ export const Window = ({ title, children, zIndex, onClose, onFocus }: WindowProp
   return (
     <div
       ref={windowRef}
-      className="absolute rounded-xl glass-panel shadow-2xl flex flex-col overflow-hidden animate-scale-in"
+      className={`absolute rounded-xl glass-panel shadow-2xl flex flex-col overflow-hidden transition-all duration-300 ${
+        isMinimized ? 'scale-0 opacity-0' : 'animate-scale-in'
+      }`}
       style={{
         left: `${position.x}px`,
         top: `${position.y}px`,
         width: `${size.width}px`,
         height: `${size.height}px`,
-        zIndex: Math.max(zIndex, 1000)
+        zIndex: Math.max(zIndex, 1000),
+        transformOrigin: 'bottom left'
       }}
       onMouseDown={onFocus}
     >
@@ -122,7 +131,10 @@ export const Window = ({ title, children, zIndex, onClose, onFocus }: WindowProp
       >
         <div className="flex-1 font-bold text-sm">{title}</div>
         <div className="window-controls flex gap-2">
-          <button className="w-9 h-9 rounded-lg flex items-center justify-center hover:bg-white/10 transition-colors">
+          <button 
+            onClick={handleMinimize}
+            className="w-9 h-9 rounded-lg flex items-center justify-center hover:bg-white/10 transition-colors"
+          >
             <Minus className="w-4 h-4" />
           </button>
           <button 

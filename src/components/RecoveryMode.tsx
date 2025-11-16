@@ -96,20 +96,21 @@ export const RecoveryMode = ({ onExit }: RecoveryModeProps) => {
   };
 
   const renderMenu = () => (
-    <div className="flex flex-col items-center justify-center min-h-screen">
-      <div className="mb-8 text-center">
-        <h1 className="text-4xl font-bold mb-2">Recovery</h1>
-        <p className="text-lg opacity-80">Choose an option to continue</p>
+    <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-b from-gray-900 to-black">
+      <div className="mb-8 text-center animate-fade-in">
+        <h1 className="text-4xl font-bold mb-2 text-cyan-400">URBANSHADE Recovery</h1>
+        <p className="text-lg opacity-80 text-gray-400">Advanced System Recovery Environment</p>
       </div>
 
       <div className="grid gap-4 w-full max-w-2xl px-8">
         <button
           onClick={onExit}
-          className="bg-white/10 hover:bg-white/20 border border-white/30 rounded-lg p-6 text-left transition-all"
+          className="bg-gradient-to-r from-cyan-900/30 to-blue-900/30 hover:from-cyan-800/50 hover:to-blue-800/50 border border-cyan-600/50 rounded-lg p-6 text-left transition-all hover-scale animate-fade-in"
+          style={{ animationDelay: '50ms' }}
         >
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-white/20 rounded flex items-center justify-center">
-              <ArrowLeft className="w-6 h-6" />
+            <div className="w-12 h-12 bg-cyan-600/30 rounded flex items-center justify-center">
+              <ArrowLeft className="w-6 h-6 text-cyan-400" />
             </div>
             <div>
               <div className="font-bold text-lg">Continue</div>

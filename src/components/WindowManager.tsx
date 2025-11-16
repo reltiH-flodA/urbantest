@@ -57,6 +57,8 @@ interface WindowManagerProps {
   onLockdown?: (protocolName: string) => void;
 }
 
+import { GenericInstaller } from "./apps/GenericInstaller";
+
 export const WindowManager = ({ windows, onClose, onFocus, allWindows, onCloseWindow, onCriticalKill, onOpenAdminPanel, onLockdown }: WindowManagerProps) => {
   const getAppContent = (appId: string) => {
     switch (appId) {
@@ -149,6 +151,11 @@ export const WindowManager = ({ windows, onClose, onFocus, allWindows, onCloseWi
         return <GenericApp title="File Compressor" description="Archive and compress files" features={["Multiple format support", "Batch compression", "Encryption options", "Extract archives"]} />;
       case "pdf-reader":
         return <PdfReader />;
+      case "installer":
+        return <GenericInstaller onComplete={() => {
+          const windowId = windows.find(w => w.app.id === appId)?.id;
+          if (windowId) onCloseWindow(windowId);
+        }} />;
       case "spreadsheet":
         return <GenericApp title="Data Sheets" description="Spreadsheet calculations and data analysis" features={["Formulas and functions", "Charts and graphs", "Data sorting and filtering", "Import/export formats"]} />;
       case "presentation":
