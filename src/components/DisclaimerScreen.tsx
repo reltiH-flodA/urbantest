@@ -80,7 +80,22 @@ export const DisclaimerScreen = ({ onAccept }: DisclaimerScreenProps) => {
             </div>
           </div>
 
-          <div className="border-t border-white/10 pt-6">
+        <div className="border-t border-white/10 pt-6 space-y-4">
+            <div className="p-3 rounded-lg bg-primary/10 border border-primary/30 text-center">
+              <p className="text-sm text-muted-foreground">
+                Need help? Check out the{" "}
+                <a 
+                  href="/docs" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-primary hover:underline font-semibold"
+                >
+                  User Documentation
+                </a>
+                {" "}for guides and information.
+              </p>
+            </div>
+
             <label className="flex items-start gap-3 cursor-pointer p-4 rounded-lg bg-black/40 border border-white/10 hover:border-primary/30 transition-colors">
               <input
                 type="checkbox"
