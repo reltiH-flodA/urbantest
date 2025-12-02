@@ -1,47 +1,105 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
+import { Waves, Shield, Globe, Keyboard, Wifi, User, Lock, Eye, EyeOff, Settings, Check, ChevronRight, Terminal } from "lucide-react";
 
 interface OOBEScreenProps {
   onComplete: () => void;
 }
 
 export const OOBEScreen = ({ onComplete }: OOBEScreenProps) => {
-  const [step, setStep] = useState<"region" | "keyboard" | "network" | "account" | "privacy" | "services" | "finish">("region");
+  const [step, setStep] = useState<"welcome" | "region" | "keyboard" | "network" | "account" | "password" | "privacy" | "finish">("welcome");
+  const [progress, setProgress] = useState(0);
   
   // Region & Keyboard
-  const [region, setRegion] = useState("United States");
-  const [keyboardLayout, setKeyboardLayout] = useState("US");
+  const [region, setRegion] = useState("Deep Sea Sector Alpha");
+  const [keyboardLayout, setKeyboardLayout] = useState("US QWERTY");
   
   // Account
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [accountError, setAccountError] = useState("");
   
   // Privacy
-  const [locationServices, setLocationServices] = useState(true);
-  const [diagnosticData, setDiagnosticData] = useState(true);
-  const [personalizedExperience, setPersonalizedExperience] = useState(false);
-  
-  // Services
-  const [cortanaEnabled, setCortanaEnabled] = useState(false);
-  const [activityHistory, setActivityHistory] = useState(true);
+  const [telemetry, setTelemetry] = useState(true);
+  const [locationServices, setLocationServices] = useState(false);
+  const [crashReports, setCrashReports] = useState(true);
+
+  // Finishing animation
+  const [finishProgress, setFinishProgress] = useState(0);
+  const [finishMessages, setFinishMessages] = useState<string[]>([]);
 
   const regions = [
-    "United States", "United Kingdom", "Canada", "Australia", 
-    "Germany", "France", "Japan", "South Korea", "Brazil", "Mexico"
+    "Deep Sea Sector Alpha",
+    "Abyssal Zone Beta",
+    "Trench Division Gamma",
+    "Hadal Research Station",
+    "Benthic Outpost Delta",
+    "Twilight Zone Epsilon"
   ];
 
-  const handleAccountSubmit = () => {
+  const keyboards = [
+    "US QWERTY",
+    "UK QWERTY",
+    "German QWERTZ",
+    "French AZERTY",
+    "Japanese Kana"
+  ];
+
+  const stepIndex = ["welcome", "region", "keyboard", "network", "account", "password", "privacy", "finish"].indexOf(step);
+
+  useEffect(() => {
+    setProgress((stepIndex / 7) * 100);
+  }, [stepIndex]);
+
+  useEffect(() => {
+    if (step === "finish") {
+      const messages = [
+        "Initializing user profile...",
+        "Configuring security protocols...",
+        "Setting up containment permissions...",
+        "Syncing regional settings...",
+        "Calibrating depth sensors...",
+        "Establishing secure connection...",
+        "Finalizing system preferences...",
+        "Setup complete!"
+      ];
+      
+      let msgIndex = 0;
+      const interval = setInterval(() => {
+        if (msgIndex < messages.length) {
+          setFinishMessages(prev => [...prev, messages[msgIndex]]);
+          setFinishProgress(((msgIndex + 1) / messages.length) * 100);
+          msgIndex++;
+        } else {
+          clearInterval(interval);
+        }
+      }, 400);
+      
+      return () => clearInterval(interval);
+    }
+  }, [step]);
+
+  const handleAccountNext = () => {
     setAccountError("");
-    
     if (!username.trim()) {
       setAccountError("Please enter a username");
       return;
     }
+    if (username.trim().length < 3) {
+      setAccountError("Username must be at least 3 characters");
+      return;
+    }
+    setStep("password");
+  };
+
+  const handlePasswordNext = () => {
+    setAccountError("");
     
-    if (password.length < 4) {
-      setAccountError("Password must be at least 4 characters");
+    // Password is optional - allow empty passwords
+    if (password && password.length < 4) {
+      setAccountError("Password must be at least 4 characters or empty");
       return;
     }
     
@@ -55,9 +113,10 @@ export const OOBEScreen = ({ onComplete }: OOBEScreenProps) => {
     const newAccount = {
       id: Date.now().toString(),
       username: username.trim(),
-      password,
-      role: "Administrator",
-      clearanceLevel: 5,
+      password: password, // Can be empty
+      name: username.trim(),
+      role: "Operator",
+      clearance: 3,
       avatar: null,
       createdAt: new Date().toISOString()
     };
@@ -72,88 +131,165 @@ export const OOBEScreen = ({ onComplete }: OOBEScreenProps) => {
     localStorage.setItem("urbanshade_settings", JSON.stringify({
       region,
       keyboardLayout,
+      telemetry,
       locationServices,
-      diagnosticData,
-      personalizedExperience,
-      cortanaEnabled,
-      activityHistory,
+      crashReports,
       theme: "dark",
       animations: true
     }));
     
-    toast.success("Setup complete! Welcome to UrbanShade OS");
+    toast.success("Welcome to UrbanShade OS");
     onComplete();
   };
 
-  // Windows 10 style blue gradient background
-  const bgStyle = "bg-[#0078d4]";
+  const ToggleSwitch = ({ enabled, onToggle }: { enabled: boolean; onToggle: () => void }) => (
+    <button
+      onClick={onToggle}
+      className={`w-12 h-6 rounded-full transition-all duration-200 ${enabled ? 'bg-cyan-500' : 'bg-slate-600'}`}
+    >
+      <div className={`w-5 h-5 rounded-full bg-white shadow-md transition-transform duration-200 ${enabled ? 'translate-x-6' : 'translate-x-0.5'}`} />
+    </button>
+  );
 
   return (
-    <div className={`fixed inset-0 ${bgStyle} text-white flex flex-col`}>
-      {/* Header bar */}
-      <div className="h-8 bg-black/20 flex items-center justify-end px-4 text-xs">
-        <span className="opacity-70">Account</span>
+    <div className="fixed inset-0 bg-gradient-to-br from-slate-950 via-slate-900 to-cyan-950 text-white flex flex-col overflow-hidden">
+      {/* Ambient effects */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        <div className="absolute top-1/4 -left-32 w-64 h-64 bg-cyan-500/10 rounded-full blur-3xl" />
+        <div className="absolute bottom-1/4 -right-32 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl" />
+      </div>
+
+      {/* Header */}
+      <div className="h-12 bg-slate-900/80 backdrop-blur flex items-center justify-between px-6 border-b border-cyan-500/20">
+        <div className="flex items-center gap-3">
+          <Waves className="w-5 h-5 text-cyan-400" />
+          <span className="text-cyan-400 font-bold text-sm tracking-wider">URBANSHADE SETUP</span>
+        </div>
+        <div className="flex items-center gap-2 text-xs text-cyan-600">
+          <div className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
+          <span>OOBE v2.2.0</span>
+        </div>
+      </div>
+
+      {/* Progress bar */}
+      <div className="h-1 bg-slate-800">
+        <div 
+          className="h-full bg-gradient-to-r from-cyan-600 to-cyan-400 transition-all duration-500"
+          style={{ width: `${progress}%` }}
+        />
       </div>
 
       {/* Main content */}
       <div className="flex-1 flex items-center justify-center p-8">
-        <div className="w-full max-w-xl">
+        <div className="w-full max-w-xl relative z-10">
           
-          {/* Region Selection */}
+          {/* Welcome */}
+          {step === "welcome" && (
+            <div className="animate-fade-in text-center">
+              <div className="w-24 h-24 mx-auto mb-6 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center">
+                <Shield className="w-12 h-12 text-cyan-400" />
+              </div>
+              <h1 className="text-4xl font-bold text-cyan-400 mb-3">Welcome to UrbanShade</h1>
+              <p className="text-cyan-600 mb-8">Let's get your terminal set up</p>
+              
+              <div className="bg-slate-800/50 border border-cyan-500/20 rounded-lg p-6 mb-8 text-left">
+                <p className="text-slate-300 text-sm mb-4">
+                  This setup wizard will guide you through configuring your UrbanShade workstation for optimal facility operations.
+                </p>
+                <ul className="space-y-2 text-sm text-slate-400">
+                  <li className="flex items-center gap-2">
+                    <div className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
+                    Regional & input settings
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <div className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
+                    Network configuration
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <div className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
+                    Account creation
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <div className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
+                    Privacy preferences
+                  </li>
+                </ul>
+              </div>
+
+              <button
+                onClick={() => setStep("region")}
+                className="px-8 py-3 bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/30 rounded-lg font-bold text-cyan-400 transition-all"
+              >
+                Get Started
+              </button>
+            </div>
+          )}
+
+          {/* Region */}
           {step === "region" && (
             <div className="animate-fade-in">
-              <h1 className="text-4xl font-light mb-2">Let's start with region. Is this right?</h1>
-              <p className="text-white/70 mb-8 text-sm">
-                This helps us give you the right experiences and recommendations.
-              </p>
+              <div className="flex items-center gap-3 mb-2">
+                <Globe className="w-6 h-6 text-cyan-400" />
+                <h1 className="text-2xl font-bold text-cyan-400">Select Your Region</h1>
+              </div>
+              <p className="text-cyan-600 text-sm mb-6">Choose your facility sector</p>
               
-              <div className="bg-white/10 backdrop-blur rounded-sm max-h-64 overflow-y-auto mb-8">
+              <div className="bg-slate-800/50 border border-cyan-500/20 rounded-lg overflow-hidden mb-6">
                 {regions.map((r) => (
                   <button
                     key={r}
                     onClick={() => setRegion(r)}
-                    className={`w-full px-4 py-3 text-left transition-colors ${
+                    className={`w-full px-4 py-3 text-left transition-all flex items-center justify-between ${
                       region === r 
-                        ? "bg-white/20 border-l-4 border-white" 
-                        : "hover:bg-white/10"
+                        ? "bg-cyan-500/20 text-cyan-300 border-l-2 border-cyan-400" 
+                        : "text-slate-300 hover:bg-slate-700/50"
                     }`}
                   >
-                    {r}
+                    <span>{r}</span>
+                    {region === r && <Check className="w-4 h-4 text-cyan-400" />}
                   </button>
                 ))}
               </div>
 
-              <div className="flex justify-end">
+              <div className="flex justify-between">
+                <button
+                  onClick={() => setStep("welcome")}
+                  className="px-6 py-2 text-slate-400 hover:text-white transition-colors"
+                >
+                  Back
+                </button>
                 <button
                   onClick={() => setStep("keyboard")}
-                  className="px-12 py-3 bg-white/20 hover:bg-white/30 transition-colors font-semibold"
+                  className="px-8 py-2 bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/30 rounded-lg text-cyan-400 font-bold transition-all flex items-center gap-2"
                 >
-                  Yes
+                  Next <ChevronRight className="w-4 h-4" />
                 </button>
               </div>
             </div>
           )}
 
-          {/* Keyboard Layout */}
+          {/* Keyboard */}
           {step === "keyboard" && (
             <div className="animate-fade-in">
-              <h1 className="text-4xl font-light mb-2">Is this the right keyboard layout?</h1>
-              <p className="text-white/70 mb-8 text-sm">
-                You can also add more layouts later.
-              </p>
+              <div className="flex items-center gap-3 mb-2">
+                <Keyboard className="w-6 h-6 text-cyan-400" />
+                <h1 className="text-2xl font-bold text-cyan-400">Keyboard Layout</h1>
+              </div>
+              <p className="text-cyan-600 text-sm mb-6">Select your input configuration</p>
               
-              <div className="bg-white/10 backdrop-blur rounded-sm mb-8">
-                {["US", "UK", "German (QWERTZ)", "French (AZERTY)", "Japanese"].map((layout) => (
+              <div className="bg-slate-800/50 border border-cyan-500/20 rounded-lg overflow-hidden mb-6">
+                {keyboards.map((k) => (
                   <button
-                    key={layout}
-                    onClick={() => setKeyboardLayout(layout)}
-                    className={`w-full px-4 py-3 text-left transition-colors ${
-                      keyboardLayout === layout 
-                        ? "bg-white/20 border-l-4 border-white" 
-                        : "hover:bg-white/10"
+                    key={k}
+                    onClick={() => setKeyboardLayout(k)}
+                    className={`w-full px-4 py-3 text-left transition-all flex items-center justify-between ${
+                      keyboardLayout === k 
+                        ? "bg-cyan-500/20 text-cyan-300 border-l-2 border-cyan-400" 
+                        : "text-slate-300 hover:bg-slate-700/50"
                     }`}
                   >
-                    {layout}
+                    <span>{k}</span>
+                    {keyboardLayout === k && <Check className="w-4 h-4 text-cyan-400" />}
                   </button>
                 ))}
               </div>
@@ -161,15 +297,15 @@ export const OOBEScreen = ({ onComplete }: OOBEScreenProps) => {
               <div className="flex justify-between">
                 <button
                   onClick={() => setStep("region")}
-                  className="px-8 py-3 hover:bg-white/10 transition-colors"
+                  className="px-6 py-2 text-slate-400 hover:text-white transition-colors"
                 >
                   Back
                 </button>
                 <button
                   onClick={() => setStep("network")}
-                  className="px-12 py-3 bg-white/20 hover:bg-white/30 transition-colors font-semibold"
+                  className="px-8 py-2 bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/30 rounded-lg text-cyan-400 font-bold transition-all flex items-center gap-2"
                 >
-                  Yes
+                  Next <ChevronRight className="w-4 h-4" />
                 </button>
               </div>
             </div>
@@ -178,291 +314,264 @@ export const OOBEScreen = ({ onComplete }: OOBEScreenProps) => {
           {/* Network */}
           {step === "network" && (
             <div className="animate-fade-in">
-              <h1 className="text-4xl font-light mb-2">Let's connect you to a network</h1>
-              <p className="text-white/70 mb-8 text-sm">
-                You'll need an internet connection to continue.
-              </p>
+              <div className="flex items-center gap-3 mb-2">
+                <Wifi className="w-6 h-6 text-cyan-400" />
+                <h1 className="text-2xl font-bold text-cyan-400">Network Connection</h1>
+              </div>
+              <p className="text-cyan-600 text-sm mb-6">Connect to facility network</p>
               
-              <div className="bg-white/10 backdrop-blur rounded-sm mb-8 p-4">
-                <div className="flex items-center justify-between py-3 border-b border-white/10">
+              <div className="bg-slate-800/50 border border-cyan-500/20 rounded-lg p-4 mb-6 space-y-3">
+                <div className="flex items-center justify-between py-3 px-4 bg-cyan-500/10 border border-cyan-500/30 rounded-lg">
                   <div className="flex items-center gap-3">
-                    <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center">
-                      <div className="w-3 h-3 bg-white rounded-full" />
+                    <div className="w-8 h-8 rounded-full bg-cyan-500/20 flex items-center justify-center">
+                      <Wifi className="w-4 h-4 text-cyan-400" />
                     </div>
-                    <span>URBANSHADE-NETWORK</span>
+                    <div>
+                      <div className="text-cyan-300 font-bold">URBANSHADE-SECURE</div>
+                      <div className="text-xs text-cyan-600">Encrypted • 2.4/5GHz</div>
+                    </div>
                   </div>
-                  <span className="text-white/60 text-sm">Connected</span>
+                  <span className="text-xs text-green-400 bg-green-500/10 px-2 py-1 rounded">Connected</span>
                 </div>
-                <div className="flex items-center justify-between py-3 opacity-50">
+                
+                <div className="flex items-center justify-between py-3 px-4 opacity-50">
                   <div className="flex items-center gap-3">
-                    <div className="w-6 h-6 rounded-full bg-white/10" />
-                    <span>FACILITY-GUEST</span>
+                    <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center">
+                      <Wifi className="w-4 h-4 text-slate-500" />
+                    </div>
+                    <div>
+                      <div className="text-slate-400">FACILITY-GUEST</div>
+                      <div className="text-xs text-slate-600">Secured</div>
+                    </div>
                   </div>
-                  <span className="text-white/60 text-sm">Secured</span>
                 </div>
               </div>
 
               <div className="flex justify-between">
                 <button
                   onClick={() => setStep("keyboard")}
-                  className="px-8 py-3 hover:bg-white/10 transition-colors"
+                  className="px-6 py-2 text-slate-400 hover:text-white transition-colors"
                 >
                   Back
                 </button>
                 <button
                   onClick={() => setStep("account")}
-                  className="px-12 py-3 bg-white/20 hover:bg-white/30 transition-colors font-semibold"
+                  className="px-8 py-2 bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/30 rounded-lg text-cyan-400 font-bold transition-all flex items-center gap-2"
                 >
-                  Next
+                  Next <ChevronRight className="w-4 h-4" />
                 </button>
               </div>
             </div>
           )}
 
-          {/* Account Creation */}
+          {/* Account */}
           {step === "account" && (
             <div className="animate-fade-in">
-              <h1 className="text-4xl font-light mb-2">Who's going to use this device?</h1>
-              <p className="text-white/70 mb-8 text-sm">
-                Create an administrator account to manage this facility.
-              </p>
+              <div className="flex items-center gap-3 mb-2">
+                <User className="w-6 h-6 text-cyan-400" />
+                <h1 className="text-2xl font-bold text-cyan-400">Create Your Account</h1>
+              </div>
+              <p className="text-cyan-600 text-sm mb-6">Enter your operator name</p>
               
-              <div className="space-y-4 mb-8">
+              <div className="bg-slate-800/50 border border-cyan-500/20 rounded-lg p-6 mb-6 space-y-4">
                 <div>
+                  <label className="block text-xs text-cyan-600 mb-2 font-mono">USERNAME</label>
                   <input
                     type="text"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
-                    placeholder="Username"
-                    className="w-full px-4 py-3 bg-white/10 border-b-2 border-white/30 focus:border-white outline-none placeholder-white/50 transition-colors"
+                    placeholder="Enter username"
+                    className="w-full px-4 py-3 bg-slate-900/50 border border-cyan-500/30 rounded-lg text-cyan-300 placeholder-slate-500 focus:border-cyan-400 focus:outline-none transition-colors"
                     autoFocus
                   />
                 </div>
+                
+                {accountError && (
+                  <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
+                    {accountError}
+                  </div>
+                )}
               </div>
 
               <div className="flex justify-between">
                 <button
                   onClick={() => setStep("network")}
-                  className="px-8 py-3 hover:bg-white/10 transition-colors"
+                  className="px-6 py-2 text-slate-400 hover:text-white transition-colors"
                 >
                   Back
                 </button>
                 <button
-                  onClick={() => username.trim() && setStep("privacy")}
-                  disabled={!username.trim()}
-                  className="px-12 py-3 bg-white/20 hover:bg-white/30 transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                  onClick={handleAccountNext}
+                  className="px-8 py-2 bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/30 rounded-lg text-cyan-400 font-bold transition-all flex items-center gap-2"
                 >
-                  Next
+                  Next <ChevronRight className="w-4 h-4" />
                 </button>
               </div>
             </div>
           )}
 
           {/* Password */}
-          {step === "privacy" && !password && (
+          {step === "password" && (
             <div className="animate-fade-in">
-              <h1 className="text-4xl font-light mb-2">Create a password</h1>
-              <p className="text-white/70 mb-8 text-sm">
-                Enter the password for {username || "your account"}.
-              </p>
+              <div className="flex items-center gap-3 mb-2">
+                <Lock className="w-6 h-6 text-cyan-400" />
+                <h1 className="text-2xl font-bold text-cyan-400">Set Password</h1>
+              </div>
+              <p className="text-cyan-600 text-sm mb-6">Secure your account (optional)</p>
               
-              <div className="space-y-4 mb-8">
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Password"
-                  className="w-full px-4 py-3 bg-white/10 border-b-2 border-white/30 focus:border-white outline-none placeholder-white/50 transition-colors"
-                  autoFocus
-                />
-                <input
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="Confirm password"
-                  className="w-full px-4 py-3 bg-white/10 border-b-2 border-white/30 focus:border-white outline-none placeholder-white/50 transition-colors"
-                />
+              <div className="bg-slate-800/50 border border-cyan-500/20 rounded-lg p-6 mb-6 space-y-4">
+                <div className="relative">
+                  <label className="block text-xs text-cyan-600 mb-2 font-mono">PASSWORD</label>
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Enter password (or leave empty)"
+                    className="w-full px-4 py-3 bg-slate-900/50 border border-cyan-500/30 rounded-lg text-cyan-300 placeholder-slate-500 focus:border-cyan-400 focus:outline-none transition-colors pr-12"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-8 text-slate-500 hover:text-cyan-400"
+                  >
+                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  </button>
+                </div>
+                
+                <div>
+                  <label className="block text-xs text-cyan-600 mb-2 font-mono">CONFIRM PASSWORD</label>
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="Confirm password"
+                    className="w-full px-4 py-3 bg-slate-900/50 border border-cyan-500/30 rounded-lg text-cyan-300 placeholder-slate-500 focus:border-cyan-400 focus:outline-none transition-colors"
+                  />
+                </div>
+
+                <p className="text-xs text-slate-500">Leave empty for no password (not recommended)</p>
                 
                 {accountError && (
-                  <p className="text-red-300 text-sm">{accountError}</p>
+                  <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
+                    {accountError}
+                  </div>
                 )}
               </div>
 
               <div className="flex justify-between">
                 <button
                   onClick={() => setStep("account")}
-                  className="px-8 py-3 hover:bg-white/10 transition-colors"
+                  className="px-6 py-2 text-slate-400 hover:text-white transition-colors"
                 >
                   Back
                 </button>
                 <button
-                  onClick={handleAccountSubmit}
-                  className="px-12 py-3 bg-white/20 hover:bg-white/30 transition-colors font-semibold"
+                  onClick={handlePasswordNext}
+                  className="px-8 py-2 bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/30 rounded-lg text-cyan-400 font-bold transition-all flex items-center gap-2"
                 >
-                  Next
+                  Next <ChevronRight className="w-4 h-4" />
                 </button>
               </div>
             </div>
           )}
 
-          {/* Privacy Settings */}
-          {step === "privacy" && password && (
+          {/* Privacy */}
+          {step === "privacy" && (
             <div className="animate-fade-in">
-              <h1 className="text-4xl font-light mb-2">Choose privacy settings</h1>
-              <p className="text-white/70 mb-8 text-sm">
-                UrbanShade uses diagnostic data to keep your device secure and up to date.
-              </p>
+              <div className="flex items-center gap-3 mb-2">
+                <Settings className="w-6 h-6 text-cyan-400" />
+                <h1 className="text-2xl font-bold text-cyan-400">Privacy Settings</h1>
+              </div>
+              <p className="text-cyan-600 text-sm mb-6">Configure data preferences</p>
               
-              <div className="space-y-4 mb-8">
-                <div className="bg-white/10 p-4 rounded-sm">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-semibold">Location</p>
-                      <p className="text-sm text-white/60">Let apps use your location</p>
-                    </div>
-                    <button
-                      onClick={() => setLocationServices(!locationServices)}
-                      className={`w-12 h-6 rounded-full transition-colors ${locationServices ? 'bg-white' : 'bg-white/30'}`}
-                    >
-                      <div className={`w-5 h-5 rounded-full bg-[#0078d4] transition-transform ${locationServices ? 'translate-x-6' : 'translate-x-0.5'}`} />
-                    </button>
+              <div className="bg-slate-800/50 border border-cyan-500/20 rounded-lg divide-y divide-cyan-500/10 mb-6">
+                <div className="p-4 flex items-center justify-between">
+                  <div>
+                    <div className="text-cyan-300 font-bold text-sm">System Telemetry</div>
+                    <div className="text-xs text-slate-500">Help improve UrbanShade</div>
                   </div>
+                  <ToggleSwitch enabled={telemetry} onToggle={() => setTelemetry(!telemetry)} />
                 </div>
-
-                <div className="bg-white/10 p-4 rounded-sm">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-semibold">Diagnostic data</p>
-                      <p className="text-sm text-white/60">Send diagnostic data to help improve</p>
-                    </div>
-                    <button
-                      onClick={() => setDiagnosticData(!diagnosticData)}
-                      className={`w-12 h-6 rounded-full transition-colors ${diagnosticData ? 'bg-white' : 'bg-white/30'}`}
-                    >
-                      <div className={`w-5 h-5 rounded-full bg-[#0078d4] transition-transform ${diagnosticData ? 'translate-x-6' : 'translate-x-0.5'}`} />
-                    </button>
+                
+                <div className="p-4 flex items-center justify-between">
+                  <div>
+                    <div className="text-cyan-300 font-bold text-sm">Location Services</div>
+                    <div className="text-xs text-slate-500">Enable depth tracking</div>
                   </div>
+                  <ToggleSwitch enabled={locationServices} onToggle={() => setLocationServices(!locationServices)} />
                 </div>
-
-                <div className="bg-white/10 p-4 rounded-sm">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-semibold">Tailored experiences</p>
-                      <p className="text-sm text-white/60">Get personalized tips and recommendations</p>
-                    </div>
-                    <button
-                      onClick={() => setPersonalizedExperience(!personalizedExperience)}
-                      className={`w-12 h-6 rounded-full transition-colors ${personalizedExperience ? 'bg-white' : 'bg-white/30'}`}
-                    >
-                      <div className={`w-5 h-5 rounded-full bg-[#0078d4] transition-transform ${personalizedExperience ? 'translate-x-6' : 'translate-x-0.5'}`} />
-                    </button>
+                
+                <div className="p-4 flex items-center justify-between">
+                  <div>
+                    <div className="text-cyan-300 font-bold text-sm">Crash Reports</div>
+                    <div className="text-xs text-slate-500">Send diagnostic data</div>
                   </div>
+                  <ToggleSwitch enabled={crashReports} onToggle={() => setCrashReports(!crashReports)} />
                 </div>
               </div>
 
               <div className="flex justify-between">
                 <button
-                  onClick={() => { setPassword(""); setConfirmPassword(""); }}
-                  className="px-8 py-3 hover:bg-white/10 transition-colors"
-                >
-                  Back
-                </button>
-                <button
-                  onClick={() => setStep("services")}
-                  className="px-12 py-3 bg-white/20 hover:bg-white/30 transition-colors font-semibold"
-                >
-                  Accept
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Services */}
-          {step === "services" && (
-            <div className="animate-fade-in">
-              <h1 className="text-4xl font-light mb-2">Customize your device</h1>
-              <p className="text-white/70 mb-8 text-sm">
-                Select all the ways you plan to use your device to get personalized suggestions.
-              </p>
-              
-              <div className="grid grid-cols-2 gap-4 mb-8">
-                {[
-                  { id: "gaming", label: "Gaming", desc: "Play and discover games" },
-                  { id: "school", label: "Schoolwork", desc: "Write notes, research" },
-                  { id: "creativity", label: "Creativity", desc: "Design and create" },
-                  { id: "business", label: "Business", desc: "Manage projects, communicate" },
-                  { id: "family", label: "Family", desc: "Safety and parental controls" },
-                  { id: "entertainment", label: "Entertainment", desc: "Movies, music, streaming" }
-                ].map((item) => (
-                  <button
-                    key={item.id}
-                    onClick={() => setCortanaEnabled(!cortanaEnabled)}
-                    className="p-4 bg-white/10 hover:bg-white/20 transition-colors text-left rounded-sm"
-                  >
-                    <p className="font-semibold">{item.label}</p>
-                    <p className="text-xs text-white/60">{item.desc}</p>
-                  </button>
-                ))}
-              </div>
-
-              <div className="flex justify-between">
-                <button
-                  onClick={() => setStep("privacy")}
-                  className="px-8 py-3 hover:bg-white/10 transition-colors"
+                  onClick={() => setStep("password")}
+                  className="px-6 py-2 text-slate-400 hover:text-white transition-colors"
                 >
                   Back
                 </button>
                 <button
                   onClick={() => setStep("finish")}
-                  className="px-12 py-3 bg-white/20 hover:bg-white/30 transition-colors font-semibold"
+                  className="px-8 py-2 bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/30 rounded-lg text-cyan-400 font-bold transition-all flex items-center gap-2"
                 >
-                  Accept
+                  Finish Setup <ChevronRight className="w-4 h-4" />
                 </button>
               </div>
-              
-              <button className="mt-4 text-sm text-white/60 hover:text-white transition-colors">
-                Skip for now
-              </button>
             </div>
           )}
 
           {/* Finish */}
           {step === "finish" && (
             <div className="animate-fade-in text-center">
-              <h1 className="text-4xl font-light mb-4">Hi, {username}</h1>
-              <p className="text-white/70 mb-2">
-                We're getting everything ready for you
-              </p>
-              <p className="text-white/50 text-sm mb-12">
-                This might take a few minutes. Please don't turn off your PC.
-              </p>
+              <div className="w-24 h-24 mx-auto mb-6 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center">
+                <Terminal className="w-12 h-12 text-cyan-400" />
+              </div>
+              <h1 className="text-3xl font-bold text-cyan-400 mb-2">Welcome, {username}</h1>
+              <p className="text-cyan-600 mb-8">Configuring your workstation...</p>
               
-              <div className="flex justify-center mb-8">
-                <div className="w-8 h-8 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              <div className="bg-slate-800/50 border border-cyan-500/20 rounded-lg p-4 mb-6 text-left font-mono text-xs max-h-48 overflow-y-auto">
+                {finishMessages.map((msg, i) => (
+                  <div key={i} className="flex items-center gap-2 py-1">
+                    <span className="text-cyan-600">&gt;</span>
+                    <span className={msg.includes("complete") ? "text-green-400" : "text-cyan-300"}>{msg}</span>
+                  </div>
+                ))}
+                {finishProgress < 100 && <span className="text-cyan-400 animate-pulse">█</span>}
               </div>
 
-              <button
-                onClick={handleComplete}
-                className="px-12 py-3 bg-white text-[#0078d4] hover:bg-white/90 transition-colors font-semibold"
-              >
-                Continue to Desktop
-              </button>
+              <div className="mb-6">
+                <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-gradient-to-r from-cyan-600 to-cyan-400 transition-all duration-300"
+                    style={{ width: `${finishProgress}%` }}
+                  />
+                </div>
+              </div>
+
+              {finishProgress >= 100 && (
+                <button
+                  onClick={handleComplete}
+                  className="px-8 py-3 bg-cyan-500 hover:bg-cyan-400 rounded-lg font-bold text-slate-900 transition-all animate-fade-in"
+                >
+                  Enter UrbanShade
+                </button>
+              )}
             </div>
           )}
         </div>
       </div>
 
       {/* Footer */}
-      <div className="h-12 bg-black/20 flex items-center justify-between px-6 text-xs">
-        <div className="flex items-center gap-4">
-          <button className="opacity-70 hover:opacity-100 transition-opacity">
-            Accessibility
-          </button>
-        </div>
-        <div className="flex items-center gap-2 opacity-70">
-          <span>🔊</span>
-          <span>🔋</span>
-        </div>
+      <div className="h-10 bg-slate-900/80 backdrop-blur flex items-center justify-between px-6 text-xs text-slate-600 border-t border-cyan-500/20">
+        <span>Depth: 8,247m • Pressure: 824 atm</span>
+        <span>© 2024 UrbanShade Corporation</span>
       </div>
     </div>
   );

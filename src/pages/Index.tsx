@@ -17,6 +17,7 @@ import { OOBEScreen } from "@/components/OOBEScreen";
 import { ChangelogDialog } from "@/components/ChangelogDialog";
 import { UpdateScreen } from "@/components/UpdateScreen";
 import { AdminPanel } from "@/components/AdminPanel";
+import { LogoutScreen } from "@/components/LogoutScreen";
 
 const Index = () => {
   const [adminSetupComplete, setAdminSetupComplete] = useState(false);
@@ -40,6 +41,8 @@ const Index = () => {
   const [crashed, setCrashed] = useState(false);
   const [killedProcess, setKilledProcess] = useState<string>("");
   const [crashType, setCrashType] = useState<"kernel" | "virus" | "bluescreen" | "memory" | "corruption" | "overload">("kernel");
+  const [loggingOut, setLoggingOut] = useState(false);
+  const [isGuestMode, setIsGuestMode] = useState(false);
   const [maintenanceMode, setMaintenanceMode] = useState(false);
   const [customCrashData, setCustomCrashData] = useState<{ title: string; message: string } | null>(null);
   const [lockdownMode, setLockdownMode] = useState(false);
@@ -210,27 +213,46 @@ const Index = () => {
   };
 
   const handleInstallationComplete = (adminData: { username: string; password: string }) => {
-    const fullAdminData = {
-      username: adminData.username,
-      password: adminData.password,
-      id: "P000",
-      name: `Administrator (${adminData.username})`,
-      role: "System Administrator",
-      clearance: 5,
-      department: "Administration",
-      location: "Control Room",
-      status: "active",
-      phone: "x1000",
-      email: "admin@urbanshade.corp",
-      createdAt: new Date().toISOString()
-    };
+    try {
+      const fullAdminData = {
+        username: adminData.username,
+        password: adminData.password,
+        id: "P000",
+        name: `Administrator (${adminData.username})`,
+        role: "System Administrator",
+        clearance: 5,
+        department: "Administration",
+        location: "Control Room",
+        status: "active",
+        phone: "x1000",
+        email: "admin@urbanshade.corp",
+        createdAt: new Date().toISOString()
+      };
 
-    localStorage.setItem("urbanshade_admin", JSON.stringify(fullAdminData));
-    setAdminSetupComplete(true);
-    
-    // Show OOBE after installation if not already complete
-    if (!oobeComplete) {
-      localStorage.removeItem("urbanshade_oobe_complete");
+      localStorage.setItem("urbanshade_admin", JSON.stringify(fullAdminData));
+      setAdminSetupComplete(true);
+      
+      // Show OOBE after installation if not already complete
+      if (!oobeComplete) {
+        localStorage.removeItem("urbanshade_oobe_complete");
+      }
+    } catch (e) {
+      // If setup fails, create admin with NO PASSWORD so user can still log in
+      console.error("Setup failed, creating passwordless admin:", e);
+      const fallbackAdmin = {
+        username: "Admin",
+        password: "", // No password
+        id: "P000",
+        name: "Administrator (Admin)",
+        role: "System Administrator",
+        clearance: 5,
+        department: "Administration",
+        location: "Control Room",
+        status: "active",
+        createdAt: new Date().toISOString()
+      };
+      localStorage.setItem("urbanshade_admin", JSON.stringify(fallbackAdmin));
+      setAdminSetupComplete(true);
     }
   };
 
@@ -243,7 +265,14 @@ const Index = () => {
   };
 
   const handleLogout = () => {
+    setLoggingOut(true);
+  };
+
+  const handleLogoutComplete = () => {
+    setLoggingOut(false);
     setLoggedIn(false);
+    setIsGuestMode(false);
+    localStorage.removeItem("urbanshade_current_user");
   };
 
   const handleShutdown = () => {
@@ -325,6 +354,12 @@ const Index = () => {
     return <CrashScreen onReboot={handleCrashReboot} killedProcess={killedProcess} crashType={crashType} customData={customCrashData} />;
   }
 
+  if (loggingOut) {
+    const currentUser = localStorage.getItem("urbanshade_current_user");
+    const username = currentUser ? JSON.parse(currentUser).name : "User";
+    return <LogoutScreen onComplete={handleLogoutComplete} username={username} />;
+  }
+
   if (shuttingDown) {
     return <ShutdownScreen onComplete={handleShutdownComplete} />;
   }
@@ -373,7 +408,16 @@ const Index = () => {
       setLoggedIn(true);
       return null;
     }
-    return <UserSelectionScreen onLogin={() => setLoggedIn(true)} />;
+    return (
+      <UserSelectionScreen 
+        onLogin={(guest) => {
+          setIsGuestMode(guest || false);
+          setLoggedIn(true);
+        }} 
+        onShutdown={handleShutdown}
+        onRestart={handleReboot}
+      />
+    );
   }
 
   // Show OOBE after first login
