@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Monitor, HardDrive, Disc, Folder, FileText, Check, ChevronRight } from "lucide-react";
+import { Monitor, HardDrive, Disc, Folder, FileText, Check, ChevronRight, Waves, Shield, Terminal } from "lucide-react";
 
 interface InstallerWizardProps {
   onComplete: (adminData: { username: string; password: string }) => void;
@@ -7,12 +7,13 @@ interface InstallerWizardProps {
 
 type Stage = "disk-load" | "welcome" | "install-type" | "directory" | "product-key" | "installing" | "complete";
 
-const VALID_KEYS = ["URBSH-2024-FACIL-MGMT", "DEMO-KEY-URBANSHADE", "TEST-INSTALL-KEY"];
+const VALID_KEYS = ["URBSH-2024-FACIL-MGMT", "DEMO-KEY-URBANSHADE", "TEST-INSTALL-KEY", "DEPTH-8247-FACILITY"];
 
 export const InstallerWizard = ({ onComplete }: InstallerWizardProps) => {
   const [stage, setStage] = useState<Stage>("disk-load");
   const [diskLoaded, setDiskLoaded] = useState(false);
   const [diskProgress, setDiskProgress] = useState(0);
+  const [diskLogs, setDiskLogs] = useState<string[]>([]);
   
   // Installation options
   const [installType, setInstallType] = useState<"minimal" | "standard" | "full">("standard");
@@ -36,23 +37,40 @@ export const InstallerWizard = ({ onComplete }: InstallerWizardProps) => {
   
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
-  // Auto-load disk on mount
+  // Auto-load disk with terminal messages
   useEffect(() => {
     if (stage === "disk-load") {
-      const timer = setTimeout(() => {
-        const interval = setInterval(() => {
-          setDiskProgress(prev => {
-            if (prev >= 100) {
-              clearInterval(interval);
-              setDiskLoaded(true);
-              setTimeout(() => setStage("welcome"), 500);
-              return 100;
-            }
-            return prev + 2;
-          });
-        }, 50);
-      }, 1000);
-      return () => clearTimeout(timer);
+      const bootMessages = [
+        "Initializing URBANSHADE Setup...",
+        "Loading STNDT UI Framework v2.2.0...",
+        "Mounting virtual disk: urbanshade_v2.img",
+        "Verifying disk integrity... OK",
+        "Loading kernel modules...",
+        "ACPI: Detected deep-sea pressure sensors",
+        "Initializing containment subsystems...",
+        "Loading security certificates...",
+        "STNDT: Standard Terminal Display loaded",
+        "Decompressing setup files...",
+        "Validating system requirements...",
+        "Depth sensors: CALIBRATED",
+        "Pressure compensation: ACTIVE",
+        "Setup environment ready.",
+      ];
+      
+      let msgIndex = 0;
+      const msgInterval = setInterval(() => {
+        if (msgIndex < bootMessages.length) {
+          setDiskLogs(prev => [...prev, bootMessages[msgIndex]]);
+          setDiskProgress(((msgIndex + 1) / bootMessages.length) * 100);
+          msgIndex++;
+        } else {
+          clearInterval(msgInterval);
+          setDiskLoaded(true);
+          setTimeout(() => setStage("welcome"), 800);
+        }
+      }, 300);
+      
+      return () => clearInterval(msgInterval);
     }
   }, [stage]);
 
@@ -64,13 +82,14 @@ export const InstallerWizard = ({ onComplete }: InstallerWizardProps) => {
       
       const interval = setInterval(() => {
         if (fileIndex < files.length) {
-          setCurrentFile(files[fileIndex]);
-          setInstallLogs(prev => [...prev.slice(-15), `Copying: ${files[fileIndex]}`]);
+          setCurrentFile(files[fileIndex].file);
+          setInstallLogs(prev => [...prev.slice(-12), `[${files[fileIndex].action}] ${files[fileIndex].file}`]);
           setInstallProgress(((fileIndex + 1) / files.length) * 100);
           fileIndex++;
         } else {
           clearInterval(interval);
           setInstallComplete(true);
+          setInstallLogs(prev => [...prev, "", "═══════════════════════════════════════", "  INSTALLATION COMPLETE - SYSTEM READY", "═══════════════════════════════════════"]);
         }
       }, getInstallSpeed());
       
@@ -80,33 +99,58 @@ export const InstallerWizard = ({ onComplete }: InstallerWizardProps) => {
 
   const getInstallSpeed = () => {
     switch (installType) {
-      case "minimal": return 200;
-      case "standard": return 150;
+      case "minimal": return 180;
+      case "standard": return 140;
       case "full": return 100;
     }
   };
 
   const getInstallFiles = () => {
     const baseFiles = [
-      "system32\\kernel.sys", "system32\\hal.dll", "system32\\ntoskrnl.exe",
-      "system32\\drivers\\acpi.sys", "system32\\drivers\\disk.sys",
-      "system32\\config\\SYSTEM", "system32\\config\\SOFTWARE",
-      "fonts\\arial.ttf", "fonts\\tahoma.ttf", "fonts\\courier.ttf",
+      { action: "EXTRACT", file: "kernel\\urbanshade.sys" },
+      { action: "EXTRACT", file: "kernel\\hal_deepsea.dll" },
+      { action: "EXTRACT", file: "kernel\\pressure_mgmt.sys" },
+      { action: "INSTALL", file: "system32\\stndt_ui.dll" },
+      { action: "INSTALL", file: "system32\\containment.dll" },
+      { action: "CONFIG", file: "system32\\config\\FACILITY" },
+      { action: "CONFIG", file: "system32\\config\\SECURITY" },
+      { action: "INSTALL", file: "drivers\\depth_sensor.sys" },
+      { action: "INSTALL", file: "drivers\\pressure_valve.sys" },
+      { action: "COPY", file: "fonts\\urbanshade_mono.ttf" },
     ];
     
     const standardFiles = [
-      "apps\\terminal.exe", "apps\\explorer.exe", "apps\\notepad.exe",
-      "apps\\monitor.exe", "apps\\settings.exe", "apps\\browser.exe",
-      "modules\\security.dll", "modules\\network.dll", "modules\\auth.dll",
-      "data\\containment.db", "data\\personnel.db", "data\\facility.db",
+      { action: "INSTALL", file: "apps\\terminal.exe" },
+      { action: "INSTALL", file: "apps\\explorer.exe" },
+      { action: "INSTALL", file: "apps\\containment_monitor.exe" },
+      { action: "INSTALL", file: "apps\\facility_map.exe" },
+      { action: "INSTALL", file: "apps\\security_cam.exe" },
+      { action: "CONFIG", file: "modules\\auth_biometric.dll" },
+      { action: "CONFIG", file: "modules\\network_secure.dll" },
+      { action: "INIT", file: "data\\personnel.udb" },
+      { action: "INIT", file: "data\\containment.udb" },
+      { action: "INIT", file: "data\\facility_zones.udb" },
+      { action: "VERIFY", file: "security\\certificates.pem" },
+      { action: "VERIFY", file: "security\\clearance_levels.cfg" },
     ];
     
     const fullFiles = [
-      "apps\\cameras.exe", "apps\\power.exe", "apps\\emergency.exe",
-      "apps\\planner.exe", "apps\\research.exe", "apps\\comms.exe",
-      "modules\\specimen.dll", "modules\\protocols.dll", "modules\\tracking.dll",
-      "data\\specimens.db", "data\\research.db", "data\\logs.db",
-      "assets\\maps\\facility.map", "assets\\sounds\\alerts.wav",
+      { action: "INSTALL", file: "apps\\specimen_tracker.exe" },
+      { action: "INSTALL", file: "apps\\power_grid.exe" },
+      { action: "INSTALL", file: "apps\\emergency_protocols.exe" },
+      { action: "INSTALL", file: "apps\\research_notes.exe" },
+      { action: "INSTALL", file: "apps\\comms_array.exe" },
+      { action: "INSTALL", file: "apps\\environmental_ctrl.exe" },
+      { action: "CONFIG", file: "modules\\specimen_bio.dll" },
+      { action: "CONFIG", file: "modules\\lockdown_proto.dll" },
+      { action: "INIT", file: "data\\specimens.udb" },
+      { action: "INIT", file: "data\\research_logs.udb" },
+      { action: "INIT", file: "data\\incident_reports.udb" },
+      { action: "COPY", file: "assets\\maps\\facility_full.fmap" },
+      { action: "COPY", file: "assets\\sounds\\alerts.wav" },
+      { action: "COPY", file: "assets\\sounds\\lockdown.wav" },
+      { action: "VERIFY", file: "protocols\\containment_breach.xml" },
+      { action: "VERIFY", file: "protocols\\evacuation.xml" },
     ];
     
     if (installType === "minimal") return baseFiles;
@@ -139,48 +183,62 @@ export const InstallerWizard = ({ onComplete }: InstallerWizardProps) => {
 
   // Sidebar progress items
   const sidebarItems = [
-    { id: "disk-load", label: "Loading Setup Files", done: stage !== "disk-load" },
+    { id: "disk-load", label: "Loading Setup", done: stage !== "disk-load" },
     { id: "welcome", label: "Welcome", done: ["install-type", "directory", "product-key", "installing", "complete"].includes(stage) },
     { id: "install-type", label: "Installation Type", done: ["directory", "product-key", "installing", "complete"].includes(stage) },
     { id: "directory", label: "Select Directory", done: ["product-key", "installing", "complete"].includes(stage) },
     { id: "product-key", label: "Product Key", done: ["installing", "complete"].includes(stage) },
     { id: "installing", label: "Installing", done: stage === "complete" || installComplete },
-    { id: "complete", label: "Finishing Setup", done: stage === "complete" },
+    { id: "complete", label: "Finishing", done: stage === "complete" },
   ];
 
   return (
-    <div className="fixed inset-0 bg-[#008080] flex items-center justify-center p-4">
+    <div className="fixed inset-0 bg-gradient-to-br from-slate-950 via-slate-900 to-cyan-950 flex items-center justify-center p-4">
+      {/* Ambient glow */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl" />
+        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl" />
+      </div>
+      
       {/* Main window */}
-      <div className="w-full max-w-4xl bg-[#c0c0c0] border-2 border-t-white border-l-white border-r-[#808080] border-b-[#808080] shadow-lg">
+      <div className="relative w-full max-w-4xl bg-slate-900/90 border border-cyan-500/30 shadow-2xl shadow-cyan-500/10 backdrop-blur-sm rounded-lg overflow-hidden">
         {/* Title bar */}
-        <div className="bg-gradient-to-r from-[#000080] to-[#1084d0] px-2 py-1 flex items-center gap-2">
-          <Monitor className="w-4 h-4 text-white" />
-          <span className="text-white font-bold text-sm">UrbanShade OS Setup</span>
+        <div className="bg-gradient-to-r from-cyan-900 to-blue-900 px-4 py-2 flex items-center gap-3 border-b border-cyan-500/30">
+          <Waves className="w-5 h-5 text-cyan-400" />
+          <span className="text-cyan-100 font-bold text-sm tracking-wide">URBANSHADE OS — Setup Wizard v2.2.0</span>
+          <div className="ml-auto flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
+            <span className="text-xs text-cyan-400/70">STNDT ACTIVE</span>
+          </div>
         </div>
         
         {/* Content area */}
-        <div className="flex min-h-[450px]">
+        <div className="flex min-h-[480px]">
           {/* Sidebar */}
-          <div className="w-48 bg-gradient-to-b from-[#000080] to-[#0000a8] p-4 text-white">
-            <div className="mb-6">
-              <div className="w-16 h-16 mx-auto mb-2 bg-[#c0c0c0] rounded flex items-center justify-center border-2 border-t-white border-l-white border-r-[#808080] border-b-[#808080]">
-                <HardDrive className="w-10 h-10 text-[#000080]" />
+          <div className="w-52 bg-gradient-to-b from-slate-800 to-slate-900 p-4 text-white border-r border-cyan-500/20">
+            <div className="mb-6 text-center">
+              <div className="w-20 h-20 mx-auto mb-3 rounded-lg bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center">
+                <Shield className="w-10 h-10 text-cyan-400" />
               </div>
-              <div className="text-center text-xs font-bold">URBANSHADE</div>
-              <div className="text-center text-[10px] opacity-80">Setup Wizard</div>
+              <div className="text-cyan-400 font-bold tracking-wider text-sm">URBANSHADE</div>
+              <div className="text-cyan-600 text-xs">Deep Sea Division</div>
             </div>
             
-            <div className="space-y-1 text-xs">
-              {sidebarItems.map((item, i) => (
-                <div key={item.id} className={`flex items-center gap-1 py-1 ${
-                  stage === item.id ? "font-bold" : "opacity-70"
+            <div className="space-y-1">
+              {sidebarItems.map((item) => (
+                <div key={item.id} className={`flex items-center gap-2 py-2 px-2 rounded text-xs transition-all ${
+                  stage === item.id 
+                    ? "bg-cyan-500/20 text-cyan-300 font-bold border-l-2 border-cyan-400" 
+                    : item.done 
+                      ? "text-cyan-600" 
+                      : "text-slate-500"
                 }`}>
                   {item.done ? (
                     <Check className="w-3 h-3 text-green-400" />
                   ) : stage === item.id ? (
-                    <ChevronRight className="w-3 h-3" />
+                    <ChevronRight className="w-3 h-3 text-cyan-400" />
                   ) : (
-                    <span className="w-3" />
+                    <span className="w-3 h-3 rounded-full border border-slate-600" />
                   )}
                   <span className="truncate">{item.label}</span>
                 </div>
@@ -188,17 +246,21 @@ export const InstallerWizard = ({ onComplete }: InstallerWizardProps) => {
             </div>
             
             {stage === "installing" && (
-              <div className="mt-6 text-xs">
-                <div className="opacity-70 mb-1">Estimated time:</div>
-                <div className="font-bold">{Math.ceil((100 - installProgress) / 10)} minutes</div>
+              <div className="mt-6 p-3 rounded bg-slate-800/50 border border-cyan-500/20">
+                <div className="text-[10px] text-cyan-600 mb-1">ESTIMATED TIME</div>
+                <div className="text-cyan-400 font-mono text-lg">{Math.ceil((100 - installProgress) / 12)} min</div>
               </div>
             )}
+            
+            <div className="absolute bottom-4 left-4 right-4 text-[9px] text-slate-600">
+              Depth: 8,247m • Pressure: 824 atm
+            </div>
           </div>
           
           {/* Main content */}
-          <div className="flex-1 p-4 flex flex-col">
+          <div className="flex-1 p-6 flex flex-col">
             {stage === "disk-load" && (
-              <DiskLoadScreen progress={diskProgress} loaded={diskLoaded} />
+              <DiskLoadScreen progress={diskProgress} loaded={diskLoaded} logs={diskLogs} />
             )}
             
             {stage === "welcome" && (
@@ -265,45 +327,90 @@ export const InstallerWizard = ({ onComplete }: InstallerWizardProps) => {
 
 // Sub-components
 
-const DiskLoadScreen = ({ progress, loaded }: { progress: number; loaded: boolean }) => (
-  <div className="flex-1 flex flex-col items-center justify-center">
-    <Disc className={`w-16 h-16 text-[#000080] mb-4 ${!loaded ? "animate-spin" : ""}`} />
-    <h2 className="text-lg font-bold text-[#000080] mb-2">
-      {loaded ? "Setup Files Loaded" : "Reading UrbanShade.img..."}
-    </h2>
-    <p className="text-sm text-gray-600 mb-4">
-      {loaded ? "Starting setup wizard..." : "Please wait while setup files are loaded from disk"}
-    </p>
-    <div className="w-64 h-5 bg-white border-2 border-t-[#808080] border-l-[#808080] border-r-white border-b-white">
-      <div 
-        className="h-full bg-[#000080] transition-all"
-        style={{ width: `${progress}%` }}
-      />
+const DiskLoadScreen = ({ progress, loaded, logs }: { progress: number; loaded: boolean; logs: string[] }) => (
+  <div className="flex-1 flex flex-col">
+    <div className="flex items-center gap-3 mb-4">
+      <Terminal className="w-5 h-5 text-cyan-400" />
+      <h2 className="text-lg font-bold text-cyan-400">
+        {loaded ? "Setup Ready" : "Initializing Setup Environment"}
+      </h2>
     </div>
-    <p className="text-xs text-gray-500 mt-2">{progress}% Complete</p>
+    
+    {/* Terminal output */}
+    <div className="flex-1 bg-black/60 border border-cyan-500/30 rounded-lg p-4 font-mono text-xs overflow-hidden">
+      <div className="text-cyan-600 mb-2">URBANSHADE SETUP LOADER v2.2.0</div>
+      <div className="text-slate-600 mb-3">════════════════════════════════════════════</div>
+      
+      <div className="space-y-1 overflow-y-auto max-h-64">
+        {logs.map((log, i) => (
+          <div key={i} className="flex items-start gap-2">
+            <span className="text-cyan-600">&gt;</span>
+            <span className={`${log.includes("OK") || log.includes("loaded") || log.includes("ready") || log.includes("CALIBRATED") || log.includes("ACTIVE") 
+              ? "text-green-400" 
+              : "text-cyan-300"}`}>
+              {log}
+            </span>
+          </div>
+        ))}
+        {!loaded && <span className="text-cyan-400 animate-pulse">█</span>}
+      </div>
+    </div>
+    
+    {/* Progress bar */}
+    <div className="mt-4">
+      <div className="flex justify-between text-xs text-cyan-600 mb-1">
+        <span>Loading setup files from urbanshade_v2.img</span>
+        <span>{Math.round(progress)}%</span>
+      </div>
+      <div className="h-2 bg-slate-800 rounded-full overflow-hidden border border-cyan-500/20">
+        <div 
+          className="h-full bg-gradient-to-r from-cyan-600 to-cyan-400 transition-all duration-300"
+          style={{ width: `${progress}%` }}
+        />
+      </div>
+    </div>
   </div>
 );
 
 const WelcomeScreen = ({ onNext }: { onNext: () => void }) => (
   <div className="flex-1 flex flex-col">
-    <h2 className="text-xl font-bold text-[#000080] mb-4">Welcome to UrbanShade OS Setup</h2>
-    <div className="flex-1 space-y-4 text-sm">
-      <p>This wizard will install UrbanShade Operating System on your computer.</p>
-      <div className="bg-white border-2 border-t-[#808080] border-l-[#808080] border-r-white border-b-white p-3">
-        <p className="font-bold text-[#000080] mb-2">Setup will:</p>
-        <ul className="space-y-1 text-gray-700">
-          <li>• Install the UrbanShade OS core system</li>
-          <li>• Configure facility management tools</li>
-          <li>• Set up security and containment modules</li>
-          <li>• Create your administrator account</li>
+    <h2 className="text-2xl font-bold text-cyan-400 mb-2">Welcome to UrbanShade OS</h2>
+    <p className="text-cyan-600 text-sm mb-6">Deep Sea Facility Management System</p>
+    
+    <div className="flex-1 space-y-4">
+      <p className="text-slate-300 text-sm">
+        This wizard will install the UrbanShade Operating System on your facility terminal.
+      </p>
+      
+      <div className="bg-slate-800/50 border border-cyan-500/20 rounded-lg p-4">
+        <p className="font-bold text-cyan-400 mb-3 text-sm">Setup will configure:</p>
+        <ul className="space-y-2 text-slate-300 text-sm">
+          <li className="flex items-center gap-2">
+            <div className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
+            Core STNDT operating system
+          </li>
+          <li className="flex items-center gap-2">
+            <div className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
+            Facility management & monitoring tools
+          </li>
+          <li className="flex items-center gap-2">
+            <div className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
+            Security & containment protocols
+          </li>
+          <li className="flex items-center gap-2">
+            <div className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
+            Administrator account creation
+          </li>
         </ul>
       </div>
-      <p className="text-gray-600 text-xs">
-        Tip: You can configure system options while files are being copied.
-      </p>
+      
+      <div className="bg-cyan-500/10 border border-cyan-500/30 rounded-lg p-3 text-xs text-cyan-300">
+        <strong>Tip:</strong> You can configure system options while files are being installed.
+      </div>
     </div>
-    <div className="flex justify-end gap-2 pt-4 border-t border-[#808080]">
-      <Win98Button onClick={onNext}>Next &gt;</Win98Button>
+    
+    <div className="flex justify-end pt-4 border-t border-cyan-500/20">
+      <UrbanButton onClick={onNext}>Begin Installation →</UrbanButton>
     </div>
   </div>
 );
@@ -315,45 +422,55 @@ const InstallTypeScreen = ({ installType, setInstallType, onBack, onNext }: {
   onNext: () => void;
 }) => (
   <div className="flex-1 flex flex-col">
-    <h2 className="text-xl font-bold text-[#000080] mb-4">Select Installation Type</h2>
+    <h2 className="text-xl font-bold text-cyan-400 mb-1">Installation Type</h2>
+    <p className="text-cyan-600 text-sm mb-6">Select the components to install</p>
+    
     <div className="flex-1 space-y-3">
-      <p className="text-sm mb-4">Choose the type of installation you want:</p>
-      
       {[
-        { id: "minimal", label: "Minimal", desc: "Core system only (~2.4 GB)", size: "2.4 GB" },
-        { id: "standard", label: "Standard (Recommended)", desc: "Essential facility tools (~5.7 GB)", size: "5.7 GB" },
-        { id: "full", label: "Full Installation", desc: "All applications and modules (~12.3 GB)", size: "12.3 GB" },
+        { id: "minimal", label: "Minimal", desc: "Core system only — backup terminals", size: "2.4 GB", icon: "○" },
+        { id: "standard", label: "Standard", desc: "Essential facility tools — recommended", size: "5.7 GB", icon: "◎", recommended: true },
+        { id: "full", label: "Full Installation", desc: "All applications and research modules", size: "12.3 GB", icon: "●" },
       ].map(opt => (
-        <label key={opt.id} className={`flex items-start gap-3 p-3 cursor-pointer border-2 ${
-          installType === opt.id 
-            ? "border-[#000080] bg-[#d4d0c8]" 
-            : "border-transparent hover:bg-[#d4d0c8]"
-        }`}>
-          <input
-            type="radio"
-            name="installType"
-            checked={installType === opt.id}
-            onChange={() => setInstallType(opt.id as any)}
-            className="mt-1"
-          />
-          <div>
-            <div className="font-bold text-sm">{opt.label}</div>
-            <div className="text-xs text-gray-600">{opt.desc}</div>
+        <button
+          key={opt.id}
+          onClick={() => setInstallType(opt.id as any)}
+          className={`w-full p-4 rounded-lg border text-left transition-all ${
+            installType === opt.id 
+              ? "border-cyan-400 bg-cyan-500/10" 
+              : "border-slate-700 hover:border-cyan-500/50 hover:bg-slate-800/50"
+          }`}
+        >
+          <div className="flex items-start gap-3">
+            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center mt-0.5 ${
+              installType === opt.id ? "border-cyan-400 bg-cyan-400" : "border-slate-600"
+            }`}>
+              {installType === opt.id && <Check className="w-3 h-3 text-slate-900" />}
+            </div>
+            <div className="flex-1">
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-cyan-300">{opt.label}</span>
+                {opt.recommended && (
+                  <span className="px-2 py-0.5 rounded text-[10px] bg-cyan-500/20 text-cyan-400 border border-cyan-500/30">
+                    RECOMMENDED
+                  </span>
+                )}
+              </div>
+              <div className="text-sm text-slate-400 mt-1">{opt.desc}</div>
+              <div className="text-xs text-cyan-600 mt-2 font-mono">{opt.size} required</div>
+            </div>
           </div>
-        </label>
+        </button>
       ))}
       
-      <div className="bg-white border-2 border-t-[#808080] border-l-[#808080] border-r-white border-b-white p-2 mt-4">
-        <div className="flex items-center gap-2 text-xs">
-          <HardDrive className="w-4 h-4" />
-          <span>Space required: {installType === "minimal" ? "2.4" : installType === "standard" ? "5.7" : "12.3"} GB</span>
-          <span className="text-gray-500">| Available: 847.2 GB</span>
-        </div>
+      <div className="flex items-center gap-3 p-3 rounded bg-slate-800/50 border border-slate-700 text-xs">
+        <HardDrive className="w-4 h-4 text-cyan-500" />
+        <span className="text-slate-400">Available space: <span className="text-cyan-400 font-mono">847.2 GB</span></span>
       </div>
     </div>
-    <div className="flex justify-between pt-4 border-t border-[#808080]">
-      <Win98Button onClick={onBack}>&lt; Back</Win98Button>
-      <Win98Button onClick={onNext}>Next &gt;</Win98Button>
+    
+    <div className="flex justify-between pt-4 border-t border-cyan-500/20">
+      <UrbanButton variant="ghost" onClick={onBack}>← Back</UrbanButton>
+      <UrbanButton onClick={onNext}>Next →</UrbanButton>
     </div>
   </div>
 );
@@ -365,41 +482,50 @@ const DirectoryScreen = ({ installDir, setInstallDir, onBack, onNext }: {
   onNext: () => void;
 }) => (
   <div className="flex-1 flex flex-col">
-    <h2 className="text-xl font-bold text-[#000080] mb-4">Select Directory</h2>
+    <h2 className="text-xl font-bold text-cyan-400 mb-1">Installation Directory</h2>
+    <p className="text-cyan-600 text-sm mb-6">Select where to install UrbanShade OS</p>
+    
     <div className="flex-1">
-      <p className="text-sm mb-4">Select the directory where you want to install UrbanShade OS:</p>
-      
       <div className="flex gap-2 mb-4">
-        <Folder className="w-8 h-8 text-yellow-600" />
-        <input
-          type="text"
-          value={installDir}
-          onChange={(e) => setInstallDir(e.target.value)}
-          className="flex-1 px-2 py-1 border-2 border-t-[#808080] border-l-[#808080] border-r-white border-b-white bg-white text-sm font-mono"
-        />
-        <Win98Button>Browse...</Win98Button>
+        <div className="flex-1 flex items-center gap-2 px-3 py-2 bg-slate-800 border border-cyan-500/30 rounded-lg">
+          <Folder className="w-5 h-5 text-cyan-500" />
+          <input
+            type="text"
+            value={installDir}
+            onChange={(e) => setInstallDir(e.target.value)}
+            className="flex-1 bg-transparent text-cyan-300 font-mono text-sm focus:outline-none"
+          />
+        </div>
+        <UrbanButton variant="ghost">Browse</UrbanButton>
       </div>
       
-      <div className="bg-white border-2 border-t-[#808080] border-l-[#808080] border-r-white border-b-white p-3 h-40 overflow-y-auto">
-        <div className="text-xs space-y-1">
-          <div className="flex items-center gap-2 cursor-pointer hover:bg-[#000080] hover:text-white p-1">
-            <HardDrive className="w-4 h-4" /> C:\ (System)
-          </div>
-          <div className="pl-4 flex items-center gap-2 cursor-pointer hover:bg-[#000080] hover:text-white p-1">
-            <Folder className="w-4 h-4 text-yellow-600" /> Program Files
-          </div>
-          <div className="pl-4 flex items-center gap-2 cursor-pointer hover:bg-[#000080] hover:text-white p-1">
-            <Folder className="w-4 h-4 text-yellow-600" /> URBANSHADE
-          </div>
-          <div className="pl-4 flex items-center gap-2 cursor-pointer hover:bg-[#000080] hover:text-white p-1">
-            <Folder className="w-4 h-4 text-yellow-600" /> Windows
-          </div>
+      <div className="bg-slate-800/50 border border-cyan-500/20 rounded-lg p-3 h-48 overflow-y-auto">
+        <div className="text-xs space-y-1 font-mono">
+          {[
+            { icon: HardDrive, name: "C:\\ (System)", indent: 0 },
+            { icon: Folder, name: "Program Files", indent: 1 },
+            { icon: Folder, name: "URBANSHADE", indent: 1, active: true },
+            { icon: Folder, name: "Windows", indent: 1 },
+            { icon: Folder, name: "Users", indent: 1 },
+          ].map((item, i) => (
+            <div 
+              key={i}
+              className={`flex items-center gap-2 p-1.5 rounded cursor-pointer transition-all ${
+                item.active ? "bg-cyan-500/20 text-cyan-300" : "text-slate-400 hover:bg-slate-700/50 hover:text-cyan-300"
+              }`}
+              style={{ paddingLeft: `${item.indent * 16 + 8}px` }}
+            >
+              <item.icon className={`w-4 h-4 ${item.active ? "text-cyan-400" : "text-cyan-600"}`} />
+              {item.name}
+            </div>
+          ))}
         </div>
       </div>
     </div>
-    <div className="flex justify-between pt-4 border-t border-[#808080]">
-      <Win98Button onClick={onBack}>&lt; Back</Win98Button>
-      <Win98Button onClick={onNext}>Next &gt;</Win98Button>
+    
+    <div className="flex justify-between pt-4 border-t border-cyan-500/20">
+      <UrbanButton variant="ghost" onClick={onBack}>← Back</UrbanButton>
+      <UrbanButton onClick={onNext}>Next →</UrbanButton>
     </div>
   </div>
 );
@@ -413,49 +539,57 @@ const ProductKeyScreen = ({ keySegments, inputRefs, handleKeySegmentChange, isVa
   onNext: () => void;
 }) => (
   <div className="flex-1 flex flex-col">
-    <h2 className="text-xl font-bold text-[#000080] mb-4">Product Key</h2>
+    <h2 className="text-xl font-bold text-cyan-400 mb-1">Product Activation</h2>
+    <p className="text-cyan-600 text-sm mb-6">Enter your facility license key</p>
+    
     <div className="flex-1">
       <div className="flex gap-4 mb-6">
-        <div className="w-24 h-24 bg-yellow-100 border-2 border-yellow-400 rounded flex items-center justify-center">
-          <Disc className="w-12 h-12 text-yellow-600" />
+        <div className="w-24 h-24 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 border border-cyan-500/30 rounded-lg flex items-center justify-center">
+          <Disc className="w-12 h-12 text-cyan-400" />
         </div>
-        <div className="flex-1 text-sm">
-          <p className="mb-2">You received a Product Key with the materials that came with your UrbanShade OS software.</p>
-          <p className="text-gray-600 text-xs">The Product Key can be found on the back of the CD container.</p>
+        <div className="flex-1 text-sm text-slate-300">
+          <p className="mb-2">Your Product Key was provided with your UrbanShade OS facility license.</p>
+          <p className="text-slate-500 text-xs">Located on the back of the installation media container.</p>
         </div>
       </div>
       
-      <p className="text-sm mb-3">Type the Product Key, excluding the dashes:</p>
+      <p className="text-sm text-slate-400 mb-3">Enter the Product Key:</p>
       
-      <div className="flex items-center gap-1 mb-4 justify-center">
+      <div className="flex items-center gap-2 justify-center mb-4">
         {keySegments.map((seg, i) => (
-          <div key={i} className="flex items-center gap-1">
+          <div key={i} className="flex items-center gap-2">
             <input
               ref={el => inputRefs.current[i] = el}
               type="text"
               value={seg}
               onChange={(e) => handleKeySegmentChange(i, e.target.value)}
               maxLength={5}
-              className="w-16 px-2 py-1 border-2 border-t-[#808080] border-l-[#808080] border-r-white border-b-white bg-white text-center font-mono text-sm uppercase"
+              className="w-20 px-3 py-2 bg-slate-800 border border-cyan-500/30 rounded text-center font-mono text-cyan-300 text-sm uppercase focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400/50"
             />
-            {i < 3 && <span className="text-lg font-bold">-</span>}
+            {i < 3 && <span className="text-cyan-600 text-lg font-bold">-</span>}
           </div>
         ))}
       </div>
       
       {isValidKey && (
-        <div className="text-center text-green-700 text-sm flex items-center justify-center gap-2">
-          <Check className="w-4 h-4" /> Valid product key
+        <div className="text-center text-green-400 text-sm flex items-center justify-center gap-2 mb-4">
+          <Check className="w-4 h-4" /> License key validated
         </div>
       )}
       
-      <div className="bg-[#ffffd0] border border-[#808080] p-2 mt-4 text-xs">
-        <strong>Demo Keys:</strong> URBSH-2024-FACIL-MGMT, DEMO-KEY-URBANSHADE, TEST-INSTALL-KEY
+      <div className="bg-cyan-500/10 border border-cyan-500/20 rounded-lg p-3 text-xs text-cyan-400">
+        <strong>Demo Keys:</strong>
+        <div className="mt-1 font-mono text-cyan-300 space-y-0.5">
+          <div>URBSH-2024-FACIL-MGMT</div>
+          <div>DEMO-KEY-URBANSHADE</div>
+          <div>DEPTH-8247-FACILITY</div>
+        </div>
       </div>
     </div>
-    <div className="flex justify-between pt-4 border-t border-[#808080]">
-      <Win98Button onClick={onBack}>&lt; Back</Win98Button>
-      <Win98Button onClick={onNext} disabled={!isValidKey}>Next &gt;</Win98Button>
+    
+    <div className="flex justify-between pt-4 border-t border-cyan-500/20">
+      <UrbanButton variant="ghost" onClick={onBack}>← Back</UrbanButton>
+      <UrbanButton onClick={onNext} disabled={!isValidKey}>Next →</UrbanButton>
     </div>
   </div>
 );
@@ -489,52 +623,52 @@ const InstallingScreen = ({
   const configSteps = [
     { title: "Time Zone", content: (
       <div className="space-y-3">
-        <p className="text-sm">Select your time zone:</p>
+        <p className="text-sm text-slate-400">Select facility time zone:</p>
         <select 
           value={timezone} 
           onChange={(e) => setTimezone(e.target.value)}
-          className="w-full p-2 border-2 border-t-[#808080] border-l-[#808080] border-r-white border-b-white"
+          className="w-full p-2 bg-slate-800 border border-cyan-500/30 rounded text-cyan-300 text-sm focus:outline-none focus:border-cyan-400"
         >
-          <option>UTC-8 Pacific</option>
+          <option>UTC-8 Pacific (HQ)</option>
           <option>UTC-5 Eastern</option>
           <option>UTC+0 London</option>
-          <option>UTC+1 Berlin</option>
           <option>UTC+9 Tokyo</option>
+          <option>UTC-11 Mariana Trench</option>
         </select>
       </div>
     )},
-    { title: "Computer Name", content: (
+    { title: "Terminal ID", content: (
       <div className="space-y-3">
-        <p className="text-sm">Enter a name for this computer:</p>
+        <p className="text-sm text-slate-400">Terminal identification:</p>
         <input
           type="text"
           value={computerName}
           onChange={(e) => setComputerName(e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, ""))}
           maxLength={15}
-          className="w-full p-2 border-2 border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono"
+          className="w-full p-2 bg-slate-800 border border-cyan-500/30 rounded font-mono text-cyan-300 text-sm focus:outline-none focus:border-cyan-400"
         />
-        <p className="text-xs text-gray-500">This name identifies your facility terminal on the network.</p>
+        <p className="text-xs text-slate-500">Identifies this terminal on the facility network.</p>
       </div>
     )},
-    { title: "Network Settings", content: (
-      <div className="space-y-3">
-        <p className="text-sm">Select network type:</p>
+    { title: "Network", content: (
+      <div className="space-y-2">
+        <p className="text-sm text-slate-400 mb-2">Network access level:</p>
         {[
-          { id: "corporate", label: "Corporate Network", desc: "Full facility access" },
-          { id: "guest", label: "Guest Network", desc: "Limited access" },
-          { id: "isolated", label: "Isolated Mode", desc: "No network connection" },
+          { id: "corporate", label: "Facility Network", desc: "Full access" },
+          { id: "guest", label: "Guest Access", desc: "Limited" },
+          { id: "isolated", label: "Isolated Mode", desc: "Offline" },
         ].map(opt => (
-          <label key={opt.id} className="flex items-start gap-2 cursor-pointer">
+          <label key={opt.id} className="flex items-center gap-2 p-2 rounded hover:bg-slate-800/50 cursor-pointer">
             <input
               type="radio"
               name="network"
               checked={networkType === opt.id}
               onChange={() => setNetworkType(opt.id)}
-              className="mt-1"
+              className="text-cyan-400"
             />
             <div>
-              <div className="text-sm font-bold">{opt.label}</div>
-              <div className="text-xs text-gray-500">{opt.desc}</div>
+              <div className="text-sm text-cyan-300">{opt.label}</div>
+              <div className="text-xs text-slate-500">{opt.desc}</div>
             </div>
           </label>
         ))}
@@ -542,18 +676,20 @@ const InstallingScreen = ({
     )},
     { title: "Updates", content: (
       <div className="space-y-3">
-        <p className="text-sm">Configure automatic updates:</p>
-        <label className="flex items-center gap-3 cursor-pointer">
+        <label className="flex items-start gap-3 cursor-pointer p-2 rounded hover:bg-slate-800/50">
           <input
             type="checkbox"
             checked={autoUpdates}
             onChange={(e) => setAutoUpdates(e.target.checked)}
-            className="w-4 h-4"
+            className="mt-1"
           />
-          <span className="text-sm">Enable automatic system updates</span>
+          <div>
+            <div className="text-sm text-cyan-300">Enable automatic updates</div>
+            <div className="text-xs text-slate-500">Recommended for security patches</div>
+          </div>
         </label>
-        <div className="bg-[#ffffd0] border border-[#808080] p-2 text-xs">
-          Recommended: Keep automatic updates enabled to receive security patches.
+        <div className="bg-amber-500/10 border border-amber-500/30 rounded p-2 text-xs text-amber-400">
+          ⚠ Keeping updates enabled is recommended for facility security.
         </div>
       </div>
     )},
@@ -561,73 +697,95 @@ const InstallingScreen = ({
 
   return (
     <div className="flex-1 flex flex-col">
-      <h2 className="text-xl font-bold text-[#000080] mb-4">
-        {installComplete && userConfigComplete ? "Setup Complete" : "Installing UrbanShade OS"}
+      <h2 className="text-xl font-bold text-cyan-400 mb-1">
+        {installComplete && userConfigComplete ? "Installation Complete" : "Installing UrbanShade OS"}
       </h2>
+      <p className="text-cyan-600 text-sm mb-4">
+        {installComplete && userConfigComplete ? "System ready to launch" : "Copying files and configuring system"}
+      </p>
       
       <div className="flex-1 flex gap-4">
         {/* Left: Install progress */}
         <div className="flex-1 flex flex-col">
-          <div className="bg-white border-2 border-t-[#808080] border-l-[#808080] border-r-white border-b-white p-2 mb-2">
-            <div className="h-4 bg-[#c0c0c0] border border-[#808080]">
+          {/* Progress bar */}
+          <div className="mb-2">
+            <div className="flex justify-between text-xs mb-1">
+              <span className="text-cyan-400">{installComplete ? "Complete" : `Installing: ${Math.round(installProgress)}%`}</span>
+              <span className="text-slate-500 font-mono truncate max-w-48">{currentFile}</span>
+            </div>
+            <div className="h-2 bg-slate-800 rounded-full overflow-hidden border border-cyan-500/20">
               <div 
-                className="h-full bg-[#000080] transition-all"
+                className={`h-full transition-all duration-300 ${installComplete ? "bg-green-500" : "bg-gradient-to-r from-cyan-600 to-cyan-400"}`}
                 style={{ width: `${installProgress}%` }}
               />
             </div>
           </div>
           
-          <div className="text-xs mb-2 flex justify-between">
-            <span>{installComplete ? "Installation complete!" : `Installing: ${Math.round(installProgress)}%`}</span>
-            <span className="text-gray-500">{currentFile}</span>
-          </div>
-          
-          <div className="flex-1 bg-black text-green-400 p-2 font-mono text-[10px] overflow-y-auto border-2 border-t-[#808080] border-l-[#808080] border-r-white border-b-white">
+          {/* Terminal */}
+          <div className="flex-1 bg-black/60 border border-cyan-500/20 rounded-lg p-3 font-mono text-[11px] overflow-y-auto">
+            <div className="text-cyan-600 mb-1">URBANSHADE INSTALLER LOG</div>
             {installLogs.map((log, i) => (
-              <div key={i}>{log}</div>
+              <div key={i} className={`${
+                log.includes("COMPLETE") ? "text-green-400 font-bold" :
+                log.includes("═") ? "text-cyan-500" :
+                log.startsWith("[VERIFY]") ? "text-yellow-400" :
+                log.startsWith("[CONFIG]") ? "text-purple-400" :
+                log.startsWith("[INIT]") ? "text-blue-400" :
+                "text-cyan-300"
+              }`}>{log}</div>
             ))}
-            {installComplete && <div className="text-white mt-2">✓ All files copied successfully</div>}
+            {!installComplete && <span className="text-cyan-400 animate-pulse">█</span>}
           </div>
         </div>
         
         {/* Right: Configuration */}
         <div className="w-56 flex flex-col">
-          <div className="text-sm font-bold text-[#000080] mb-2">
-            Configure while installing:
+          <div className="text-xs font-bold text-cyan-500 mb-2">
+            CONFIGURE WHILE INSTALLING
           </div>
           
           {!userConfigComplete ? (
             <>
-              <div className="bg-white border-2 border-t-[#808080] border-l-[#808080] border-r-white border-b-white p-3 flex-1">
-                <div className="text-xs font-bold text-[#000080] mb-3">
-                  Step {configStep + 1}/4: {configSteps[configStep].title}
+              <div className="bg-slate-800/50 border border-cyan-500/20 rounded-lg p-3 flex-1">
+                <div className="text-xs text-cyan-400 mb-3 flex items-center gap-2">
+                  <span className="w-5 h-5 rounded-full bg-cyan-500/20 flex items-center justify-center text-cyan-300">
+                    {configStep + 1}
+                  </span>
+                  {configSteps[configStep].title}
                 </div>
                 {configSteps[configStep].content}
               </div>
               
-              <div className="flex justify-between mt-2">
-                <Win98Button 
+              <div className="flex justify-between mt-2 gap-2">
+                <UrbanButton 
+                  variant="ghost"
                   onClick={() => setConfigStep(Math.max(0, configStep - 1))}
                   disabled={configStep === 0}
+                  size="sm"
                 >
-                  &lt; Back
-                </Win98Button>
+                  ←
+                </UrbanButton>
+                <div className="flex gap-1">
+                  {[0,1,2,3].map(i => (
+                    <div key={i} className={`w-2 h-2 rounded-full ${i <= configStep ? "bg-cyan-400" : "bg-slate-700"}`} />
+                  ))}
+                </div>
                 {configStep < 3 ? (
-                  <Win98Button onClick={() => setConfigStep(configStep + 1)}>
-                    Next &gt;
-                  </Win98Button>
+                  <UrbanButton onClick={() => setConfigStep(configStep + 1)} size="sm">
+                    →
+                  </UrbanButton>
                 ) : (
-                  <Win98Button onClick={() => setUserConfigComplete(true)}>
+                  <UrbanButton onClick={() => setUserConfigComplete(true)} size="sm">
                     Done
-                  </Win98Button>
+                  </UrbanButton>
                 )}
               </div>
             </>
           ) : (
-            <div className="bg-[#d4ffd4] border-2 border-green-600 p-3 flex-1 flex flex-col items-center justify-center">
-              <Check className="w-12 h-12 text-green-600 mb-2" />
-              <div className="text-sm font-bold text-green-800">Configuration Complete</div>
-              <div className="text-xs text-green-600 mt-1">
+            <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4 flex-1 flex flex-col items-center justify-center">
+              <Check className="w-10 h-10 text-green-400 mb-2" />
+              <div className="text-sm font-bold text-green-300">Config Complete</div>
+              <div className="text-xs text-green-500 mt-1 text-center">
                 {installComplete ? "Ready to finish!" : "Waiting for files..."}
               </div>
             </div>
@@ -635,26 +793,34 @@ const InstallingScreen = ({
         </div>
       </div>
       
-      <div className="flex justify-end pt-4 border-t border-[#808080] mt-4">
-        <Win98Button onClick={onFinish} disabled={!canFinish}>
-          {canFinish ? "Finish" : "Please wait..."}
-        </Win98Button>
+      <div className="flex justify-end pt-4 border-t border-cyan-500/20 mt-4">
+        <UrbanButton onClick={onFinish} disabled={!canFinish}>
+          {canFinish ? "Launch UrbanShade →" : "Please wait..."}
+        </UrbanButton>
       </div>
     </div>
   );
 };
 
-// Win98-style button
-const Win98Button = ({ children, onClick, disabled }: { 
+// UrbanShade themed button
+const UrbanButton = ({ children, onClick, disabled, variant = "primary", size = "md" }: { 
   children: React.ReactNode; 
   onClick?: () => void;
   disabled?: boolean;
+  variant?: "primary" | "ghost";
+  size?: "sm" | "md";
 }) => (
   <button
     onClick={onClick}
     disabled={disabled}
-    className={`px-4 py-1 text-sm border-2 border-t-white border-l-white border-r-[#808080] border-b-[#808080] bg-[#c0c0c0] active:border-t-[#808080] active:border-l-[#808080] active:border-r-white active:border-b-white ${
-      disabled ? "opacity-50 cursor-not-allowed" : "hover:bg-[#d4d0c8]"
+    className={`font-medium transition-all ${
+      size === "sm" ? "px-3 py-1.5 text-xs" : "px-4 py-2 text-sm"
+    } ${
+      variant === "primary"
+        ? "bg-cyan-500 hover:bg-cyan-400 text-slate-900 rounded-lg shadow-lg shadow-cyan-500/20"
+        : "text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/10 rounded-lg"
+    } ${
+      disabled ? "opacity-50 cursor-not-allowed" : ""
     }`}
   >
     {children}
