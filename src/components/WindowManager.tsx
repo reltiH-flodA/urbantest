@@ -44,6 +44,8 @@ import { Spreadsheet } from "./apps/Spreadsheet";
 import { EmailClient } from "./apps/EmailClient";
 import { InstantChat } from "./apps/InstantChat";
 import { GenericInstaller } from "./apps/GenericInstaller";
+import { AccountSettings } from "./apps/AccountSettings";
+import { ImageEditor } from "./apps/ImageEditor";
 
 interface WindowData {
   id: string;
@@ -223,6 +225,10 @@ export const WindowManager = ({ windows, onClose, onFocus, onMinimize, allWindow
         return <GenericApp title="File Encryptor" description="Military-grade encryption" features={["AES-256 encryption", "Password protection", "Secure deletion", "Batch encryption"]} />;
       case "password-manager":
         return <GenericApp title="Password Vault" description="Secure password storage" features={["Encrypted vault", "Password generator", "Auto-fill forms", "Secure sharing"]} />;
+      case "account-settings":
+        return <AccountSettings />;
+      case "image-editor":
+        return <ImageEditor />;
       default:
         return (
           <div className="p-4 text-muted-foreground">

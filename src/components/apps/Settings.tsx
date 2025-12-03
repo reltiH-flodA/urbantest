@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Settings as SettingsIcon, Monitor, Wifi, Volume2, HardDrive, Users, Clock, Shield, Palette, Accessibility, Bell, Power, Globe, Search, Upload, UserPlus, AlertTriangle, Download, ChevronDown, Code, FileText } from "lucide-react";
+import { Settings as SettingsIcon, Monitor, Wifi, Volume2, HardDrive, Users, Clock, Shield, Palette, Accessibility, Bell, Power, Globe, Search, Upload, UserPlus, AlertTriangle, Download, ChevronDown, Code, FileText, Type } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,8 +11,10 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { saveState, loadState } from "@/lib/persistence";
 import { toast } from "sonner";
+import { useSystemSettings } from "@/hooks/useSystemSettings";
 
 export const Settings = ({ onUpdate }: { onUpdate?: () => void }) => {
+  const { settings, updateSetting, resetToDefaults } = useSystemSettings();
   const [selectedCategory, setSelectedCategory] = useState("system");
   const [searchQuery, setSearchQuery] = useState("");
   const [showFactoryResetDialog, setShowFactoryResetDialog] = useState(false);
@@ -22,7 +24,6 @@ export const Settings = ({ onUpdate }: { onUpdate?: () => void }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   // System settings
-  const [deviceName, setDeviceName] = useState(loadState("settings_device_name", "URBANSHADE-TERMINAL"));
   const [autoUpdates, setAutoUpdates] = useState(loadState("settings_auto_updates", true));
   const [telemetry, setTelemetry] = useState(loadState("settings_telemetry", false));
   const [powerMode, setPowerMode] = useState(loadState("settings_power_mode", "balanced"));
@@ -37,19 +38,9 @@ export const Settings = ({ onUpdate }: { onUpdate?: () => void }) => {
   const [gpuRendering, setGpuRendering] = useState(loadState("settings_gpu_rendering", false));
   
   // Display settings
-  const [brightness, setBrightness] = useState(loadState("settings_brightness", [80]));
   const [resolution, setResolution] = useState(loadState("settings_resolution", "1920x1080"));
   const [nightLight, setNightLight] = useState(loadState("settings_night_light", false));
-  const [animations, setAnimations] = useState(loadState("settings_animations", true));
   const [theme, setTheme] = useState(loadState("settings_theme", "dark"));
-  const [bgGradientStart, setBgGradientStart] = useState(loadState("settings_bg_gradient_start", "#1a1a2e"));
-  const [bgGradientEnd, setBgGradientEnd] = useState(loadState("settings_bg_gradient_end", "#16213e"));
-
-  // Apply gradient on mount
-  useEffect(() => {
-    document.documentElement.style.setProperty('--bg-gradient-start', bgGradientStart);
-    document.documentElement.style.setProperty('--bg-gradient-end', bgGradientEnd);
-  }, []);
   
   // Network settings
   const [wifiEnabled, setWifiEnabled] = useState(loadState("settings_wifi", true));
@@ -221,8 +212,8 @@ export const Settings = ({ onUpdate }: { onUpdate?: () => void }) => {
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Device name:</span>
                   <Input 
-                    value={deviceName} 
-                    onChange={(e) => { setDeviceName(e.target.value); handleSave("settings_device_name", e.target.value); }}
+                    value={settings.deviceName} 
+                    onChange={(e) => updateSetting("deviceName", e.target.value)}
                     className="w-48 h-8"
                   />
                 </div>
@@ -478,19 +469,13 @@ export const Settings = ({ onUpdate }: { onUpdate?: () => void }) => {
               <h3 className="font-semibold mb-4">Brightness</h3>
               <div className="space-y-4">
                 <Slider 
-                  value={brightness} 
-                  onValueChange={(value) => { 
-                    setBrightness(value); 
-                    handleSave("settings_brightness", value);
-                    // Apply brightness
-                    const nightLightFilter = nightLight ? 'sepia(30%) saturate(50%)' : '';
-                    document.body.style.filter = `brightness(${value[0]}%) ${nightLightFilter}`.trim();
-                  }}
+                  value={[settings.brightness]} 
+                  onValueChange={(value) => updateSetting("brightness", value[0])}
                   max={100} 
                   step={1}
                   className="w-full"
                 />
-                <div className="text-sm text-muted-foreground text-right">{brightness[0]}%</div>
+                <div className="text-sm text-muted-foreground text-right">{settings.brightness}%</div>
               </div>
             </Card>
 
@@ -522,11 +507,7 @@ export const Settings = ({ onUpdate }: { onUpdate?: () => void }) => {
                     <div className="font-medium">Animations</div>
                     <div className="text-sm text-muted-foreground">Enable smooth transitions</div>
                   </div>
-                  <Switch checked={animations} onCheckedChange={(checked) => { 
-                    setAnimations(checked); 
-                    handleSave("settings_animations", checked);
-                    document.documentElement.style.setProperty('--animation-duration', checked ? '0.3s' : '0s');
-                  }} />
+                  <Switch checked={settings.animationsEnabled} onCheckedChange={(checked) => updateSetting("animationsEnabled", checked)} />
                 </div>
               </div>
             </Card>
@@ -562,8 +543,6 @@ export const Settings = ({ onUpdate }: { onUpdate?: () => void }) => {
                   <Switch checked={nightLight} onCheckedChange={(checked) => { 
                     setNightLight(checked); 
                     handleSave("settings_night_light", checked);
-                    const nightLightFilter = checked ? 'sepia(30%) saturate(50%)' : '';
-                    document.body.style.filter = `brightness(${brightness[0]}%) ${nightLightFilter}`.trim();
                   }} />
                 </div>
               </div>
@@ -576,12 +555,8 @@ export const Settings = ({ onUpdate }: { onUpdate?: () => void }) => {
                   <label className="text-sm font-medium mb-2 block">Gradient Start Color</label>
                   <input
                     type="color"
-                    value={bgGradientStart}
-                    onChange={(e) => {
-                      setBgGradientStart(e.target.value);
-                      handleSave("settings_bg_gradient_start", e.target.value);
-                      document.documentElement.style.setProperty('--bg-gradient-start', e.target.value);
-                    }}
+                    value={settings.bgGradientStart}
+                    onChange={(e) => updateSetting("bgGradientStart", e.target.value)}
                     className="w-full h-12 rounded-lg cursor-pointer border border-border"
                   />
                 </div>
@@ -589,36 +564,65 @@ export const Settings = ({ onUpdate }: { onUpdate?: () => void }) => {
                   <label className="text-sm font-medium mb-2 block">Gradient End Color</label>
                   <input
                     type="color"
-                    value={bgGradientEnd}
-                    onChange={(e) => {
-                      setBgGradientEnd(e.target.value);
-                      handleSave("settings_bg_gradient_end", e.target.value);
-                      document.documentElement.style.setProperty('--bg-gradient-end', e.target.value);
-                    }}
+                    value={settings.bgGradientEnd}
+                    onChange={(e) => updateSetting("bgGradientEnd", e.target.value)}
                     className="w-full h-12 rounded-lg cursor-pointer border border-border"
                   />
                 </div>
                 <div className="p-4 rounded-lg border border-border" style={{
-                  background: `linear-gradient(135deg, ${bgGradientStart}, ${bgGradientEnd})`
+                  background: `linear-gradient(135deg, ${settings.bgGradientStart}, ${settings.bgGradientEnd})`
                 }}>
                   <p className="text-sm text-center text-white font-semibold">Preview</p>
                 </div>
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Accent Color</label>
+                  <Select value={settings.accentColor} onValueChange={(value) => updateSetting("accentColor", value)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="cyan">Cyan</SelectItem>
+                      <SelectItem value="purple">Purple</SelectItem>
+                      <SelectItem value="green">Green</SelectItem>
+                      <SelectItem value="orange">Orange</SelectItem>
+                      <SelectItem value="pink">Pink</SelectItem>
+                      <SelectItem value="blue">Blue</SelectItem>
+                      <SelectItem value="red">Red</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Font Family</label>
+                  <Select value={settings.fontFamily} onValueChange={(value) => updateSetting("fontFamily", value)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="JetBrains Mono">JetBrains Mono</SelectItem>
+                      <SelectItem value="Fira Code">Fira Code</SelectItem>
+                      <SelectItem value="Source Code Pro">Source Code Pro</SelectItem>
+                      <SelectItem value="Roboto Mono">Roboto Mono</SelectItem>
+                      <SelectItem value="Inter">Inter</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Glass Opacity: {Math.round(settings.glassOpacity * 100)}%</label>
+                  <Slider 
+                    value={[settings.glassOpacity * 100]} 
+                    onValueChange={(value) => updateSetting("glassOpacity", value[0] / 100)}
+                    max={100} 
+                    min={10}
+                    step={5}
+                    className="w-full"
+                  />
+                </div>
                 <Button 
                   variant="outline"
-                  onClick={() => {
-                    const defaultStart = "#1a1a2e";
-                    const defaultEnd = "#16213e";
-                    setBgGradientStart(defaultStart);
-                    setBgGradientEnd(defaultEnd);
-                    handleSave("settings_bg_gradient_start", defaultStart);
-                    handleSave("settings_bg_gradient_end", defaultEnd);
-                    document.documentElement.style.setProperty('--bg-gradient-start', defaultStart);
-                    document.documentElement.style.setProperty('--bg-gradient-end', defaultEnd);
-                    toast.success("Reset to default colors");
-                  }}
+                  onClick={resetToDefaults}
                   className="w-full"
                 >
-                  Reset to Default
+                  Reset to Defaults
                 </Button>
               </div>
             </Card>
