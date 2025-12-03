@@ -5,7 +5,7 @@ import { StartMenu } from "./StartMenu";
 import { WindowManager } from "./WindowManager";
 import { RecoveryMode } from "./RecoveryMode";
 import { ContextMenu, getDesktopMenuItems } from "./ContextMenu";
-import { FileText, Database, Activity, Radio, FileBox, AlertTriangle, Terminal, Users, Wifi, Cpu, Mail, Globe, Music, Camera, Shield, MapPin, BookOpen, Zap, Wind, Calculator as CalcIcon, Lock, FileWarning, Grid3x3, ShoppingBag, StickyNote, Palette, Volume2, CloudRain, Clock as ClockIcon, Calendar, Newspaper, Key, HardDrive, FileArchive, FileText as PdfIcon, Sheet, Presentation, Video, Image, Mic, Gamepad2, MessageSquare, VideoIcon, MailOpen, FolderUp, TerminalSquare, Network, HardDrive as DiskIcon, Settings as SettingsIcon, Activity as PerformanceIcon, ScanLine, Languages, BookOpenCheck, Globe2, MapPinned, Telescope, Beaker, Calculator as PhysicsIcon, Fingerprint, Lock as EncryptionIcon, KeyRound, Download, Puzzle, Skull } from "lucide-react";
+import { FileText, Database, Activity, Radio, FileBox, AlertTriangle, Terminal, Users, Wifi, Cpu, Mail, Globe, Music, Camera, Shield, MapPin, BookOpen, Zap, Wind, Calculator as CalcIcon, Lock, FileWarning, Grid3x3, ShoppingBag, StickyNote, Palette, Volume2, CloudRain, Clock as ClockIcon, Calendar, Newspaper, Key, HardDrive, FileArchive, FileText as PdfIcon, Sheet, Presentation, Video, Image, Mic, Gamepad2, MessageSquare, VideoIcon, MailOpen, FolderUp, TerminalSquare, Network, HardDrive as DiskIcon, Settings as SettingsIcon, Activity as PerformanceIcon, ScanLine, Languages, BookOpenCheck, Globe2, MapPinned, Telescope, Beaker, Calculator as PhysicsIcon, Fingerprint, Lock as EncryptionIcon, KeyRound, Download, Puzzle, Skull, Monitor } from "lucide-react";
 import { toast } from "sonner";
 
 export interface App {
@@ -273,6 +273,13 @@ export const Desktop = ({
       name: "Facility Planner",
       icon: <Grid3x3 className="w-11 h-11" />,
       run: () => openWindow(allApps[21]),
+      standardInclude: true
+    },
+    {
+      id: "computer-management",
+      name: "Computer Mgmt",
+      icon: <Monitor className="w-11 h-11" />,
+      run: () => openWindow(allApps[22]),
       standardInclude: true
     },
     {

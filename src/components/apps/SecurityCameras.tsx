@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { Camera, Video, AlertTriangle, List, Map } from "lucide-react";
+import { Camera, Video, AlertTriangle, List, Map, Plus, Link2, X, ExternalLink, Settings } from "lucide-react";
+import { toast } from "sonner";
 
 interface CameraFeed {
   id: string;
@@ -8,10 +9,12 @@ interface CameraFeed {
   status: "online" | "offline" | "warning";
   description: string;
   area: "north" | "south" | "east" | "west" | "central";
+  isExternal?: boolean;
+  streamUrl?: string;
 }
 
 export const SecurityCameras = () => {
-  const cameras: CameraFeed[] = [
+  const defaultCameras: CameraFeed[] = [
     { id: "CAM-01", name: "Main Entrance", location: "Airlock Alpha", status: "online", description: "Clear visibility. No activity detected.", area: "north" },
     { id: "CAM-02", name: "Control Room", location: "Operations Center", status: "online", description: "Personnel present. All systems operational.", area: "central" },
     { id: "CAM-03", name: "Research Lab A", location: "Research Division", status: "online", description: "Lab equipment active. 2 personnel on duty.", area: "east" },
@@ -23,10 +26,23 @@ export const SecurityCameras = () => {
     { id: "CAM-09", name: "Engineering", location: "Engineering Deck", status: "online", description: "Active maintenance. 3 personnel present.", area: "west" },
   ];
 
+  const [cameras, setCameras] = useState<CameraFeed[]>(() => {
+    const saved = localStorage.getItem("urbanshade_external_cameras");
+    if (saved) {
+      try {
+        const external = JSON.parse(saved);
+        return [...defaultCameras, ...external];
+      } catch { return defaultCameras; }
+    }
+    return defaultCameras;
+  });
+
   const [selectedCamera, setSelectedCamera] = useState<CameraFeed>(cameras[0]);
   const [scanLines, setScanLines] = useState(0);
   const [viewMode, setViewMode] = useState<"list" | "map">("list");
   const [selectedArea, setSelectedArea] = useState<string | null>(null);
+  const [showAddCamera, setShowAddCamera] = useState(false);
+  const [newCamera, setNewCamera] = useState({ name: "", location: "", streamUrl: "" });
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -45,6 +61,48 @@ export const SecurityCameras = () => {
   };
 
   const getAreaCameras = (area: string) => cameras.filter(c => c.area === area);
+
+  const handleAddCamera = () => {
+    if (!newCamera.name || !newCamera.streamUrl) {
+      toast.error("Please enter camera name and stream URL");
+      return;
+    }
+
+    const externalCamera: CameraFeed = {
+      id: `EXT-${Date.now()}`,
+      name: newCamera.name,
+      location: newCamera.location || "External",
+      status: "online",
+      description: "External IP camera stream",
+      area: "central",
+      isExternal: true,
+      streamUrl: newCamera.streamUrl,
+    };
+
+    const updatedCameras = [...cameras, externalCamera];
+    setCameras(updatedCameras);
+    
+    // Save external cameras
+    const externalCameras = updatedCameras.filter(c => c.isExternal);
+    localStorage.setItem("urbanshade_external_cameras", JSON.stringify(externalCameras));
+    
+    setNewCamera({ name: "", location: "", streamUrl: "" });
+    setShowAddCamera(false);
+    toast.success(`Camera "${newCamera.name}" added`);
+  };
+
+  const handleRemoveCamera = (id: string) => {
+    const updatedCameras = cameras.filter(c => c.id !== id);
+    setCameras(updatedCameras);
+    
+    const externalCameras = updatedCameras.filter(c => c.isExternal);
+    localStorage.setItem("urbanshade_external_cameras", JSON.stringify(externalCameras));
+    
+    if (selectedCamera.id === id) {
+      setSelectedCamera(updatedCameras[0]);
+    }
+    toast.success("Camera removed");
+  };
 
   const areas = [
     { id: "north", name: "North Sector", x: "50%", y: "10%", color: "bg-blue-500" },
@@ -89,7 +147,83 @@ export const SecurityCameras = () => {
               Map
             </button>
           </div>
+
+          {/* Add External Camera Button */}
+          <button
+            onClick={() => setShowAddCamera(true)}
+            className="w-full mt-2 px-3 py-2 rounded-lg bg-primary/20 border border-primary/30 hover:bg-primary/30 transition-colors text-xs flex items-center justify-center gap-2"
+          >
+            <Plus className="w-4 h-4" />
+            Add IP Camera
+          </button>
         </div>
+
+        {/* Add Camera Modal */}
+        {showAddCamera && (
+          <div className="absolute inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
+            <div className="bg-card border border-border rounded-lg p-4 w-full max-w-sm">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <Link2 className="w-5 h-5 text-primary" />
+                  <h3 className="font-bold">Add IP Camera</h3>
+                </div>
+                <button onClick={() => setShowAddCamera(false)} className="p-1 hover:bg-muted/30 rounded">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              
+              <div className="space-y-3">
+                <div>
+                  <label className="text-xs text-muted-foreground block mb-1">Camera Name *</label>
+                  <input
+                    type="text"
+                    value={newCamera.name}
+                    onChange={(e) => setNewCamera({ ...newCamera, name: e.target.value })}
+                    placeholder="e.g., Front Door Camera"
+                    className="w-full px-3 py-2 rounded-lg bg-muted/30 border border-border text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground block mb-1">Location</label>
+                  <input
+                    type="text"
+                    value={newCamera.location}
+                    onChange={(e) => setNewCamera({ ...newCamera, location: e.target.value })}
+                    placeholder="e.g., Building Entrance"
+                    className="w-full px-3 py-2 rounded-lg bg-muted/30 border border-border text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground block mb-1">Stream URL *</label>
+                  <input
+                    type="text"
+                    value={newCamera.streamUrl}
+                    onChange={(e) => setNewCamera({ ...newCamera, streamUrl: e.target.value })}
+                    placeholder="http://192.168.1.x:8080/video"
+                    className="w-full px-3 py-2 rounded-lg bg-muted/30 border border-border text-sm font-mono"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Enter MJPEG stream URL or snapshot URL from your IP camera
+                  </p>
+                </div>
+                
+                <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/30">
+                  <p className="text-xs text-amber-400">
+                    <AlertTriangle className="w-3 h-3 inline mr-1" />
+                    Camera must be on the same network and accessible from this browser
+                  </p>
+                </div>
+                
+                <button
+                  onClick={handleAddCamera}
+                  className="w-full px-4 py-2 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground font-medium transition-colors"
+                >
+                  Add Camera
+                </button>
+              </div>
+        </div>
+          </div>
+        )}
 
         <div className="overflow-y-auto flex-1">
           {viewMode === "list" ? (
@@ -103,12 +237,27 @@ export const SecurityCameras = () => {
                 }`}
               >
                 <div className="flex items-center gap-2 mb-1">
-                  <Video className={`w-4 h-4 ${getStatusColor(camera.status)}`} />
-                  <div className="font-bold text-sm">{camera.name}</div>
+                  {camera.isExternal ? (
+                    <ExternalLink className={`w-4 h-4 ${getStatusColor(camera.status)}`} />
+                  ) : (
+                    <Video className={`w-4 h-4 ${getStatusColor(camera.status)}`} />
+                  )}
+                  <div className="font-bold text-sm flex-1">{camera.name}</div>
+                  {camera.isExternal && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleRemoveCamera(camera.id);
+                      }}
+                      className="p-1 hover:bg-destructive/20 rounded"
+                    >
+                      <X className="w-3 h-3 text-destructive" />
+                    </button>
+                  )}
                 </div>
                 <div className="text-xs text-muted-foreground">{camera.location}</div>
                 <div className={`text-xs font-bold mt-1 ${getStatusColor(camera.status)}`}>
-                  ● {camera.status.toUpperCase()}
+                  ● {camera.status.toUpperCase()} {camera.isExternal && "(External)"}
                 </div>
               </div>
             ))
@@ -212,6 +361,40 @@ export const SecurityCameras = () => {
                 <div className="text-muted-foreground text-sm mt-2">Camera offline - maintenance required</div>
               </div>
             </div>
+          ) : selectedCamera.isExternal && selectedCamera.streamUrl ? (
+            <>
+              {/* External IP Camera Feed */}
+              <div className="absolute inset-0 flex items-center justify-center">
+                <img 
+                  src={selectedCamera.streamUrl} 
+                  alt={selectedCamera.name}
+                  className="max-w-full max-h-full object-contain"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).style.display = 'none';
+                    (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden');
+                  }}
+                />
+                <div className="hidden text-center">
+                  <AlertTriangle className="w-16 h-16 text-yellow-500 mx-auto mb-4" />
+                  <div className="text-yellow-500 font-bold text-lg">STREAM UNAVAILABLE</div>
+                  <div className="text-muted-foreground text-sm mt-2">Unable to connect to camera stream</div>
+                  <div className="text-xs text-muted-foreground mt-1 font-mono">{selectedCamera.streamUrl}</div>
+                </div>
+              </div>
+
+              {/* Camera info overlay for external */}
+              <div className="absolute top-4 left-4 font-mono text-xs space-y-1 text-primary">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 bg-destructive rounded-full animate-pulse"></div>
+                  <span>LIVE</span>
+                </div>
+                <div>{selectedCamera.id}</div>
+                <div className="flex items-center gap-1">
+                  <ExternalLink className="w-3 h-3" />
+                  External Feed
+                </div>
+              </div>
+            </>
           ) : (
             <>
               {/* Simulated camera feed with noise */}

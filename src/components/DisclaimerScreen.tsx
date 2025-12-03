@@ -1,12 +1,13 @@
 import { useState } from "react";
-import { Info, CheckCircle, ShieldCheck, Code, Github, BookOpen } from "lucide-react";
+import { Info, CheckCircle, ShieldCheck, Code, Github, BookOpen, FastForward } from "lucide-react";
 
 interface DisclaimerScreenProps {
-  onAccept: () => void;
+  onAccept: (skipInstall?: boolean) => void;
 }
 
 export const DisclaimerScreen = ({ onAccept }: DisclaimerScreenProps) => {
   const [understood, setUnderstood] = useState(false);
+  const [skipInstall, setSkipInstall] = useState(false);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-foreground flex items-center justify-center p-4 sm:p-8">
@@ -190,15 +191,38 @@ export const DisclaimerScreen = ({ onAccept }: DisclaimerScreenProps) => {
             </div>
           </label>
 
+          {/* Skip Installation Option */}
+          <label className="block cursor-pointer group">
+            <div className={`bg-card/30 backdrop-blur-sm border-2 ${skipInstall ? 'border-amber-500/50' : 'border-border'} hover:border-amber-500/30 rounded-xl p-4 transition-all`}>
+              <div className="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  checked={skipInstall}
+                  onChange={(e) => setSkipInstall(e.target.checked)}
+                  className="w-4 h-4 cursor-pointer accent-amber-500 flex-shrink-0"
+                />
+                <FastForward className={`w-5 h-5 ${skipInstall ? 'text-amber-500' : 'text-muted-foreground'}`} />
+                <div className="flex-1">
+                  <div className={`font-medium text-sm ${skipInstall ? 'text-amber-500' : 'text-foreground'}`}>
+                    Skip installation (quick start)
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    Use default settings and create a default admin account
+                  </div>
+                </div>
+              </div>
+            </div>
+          </label>
+
           <button
-            onClick={onAccept}
+            onClick={() => onAccept(skipInstall)}
             disabled={!understood}
             className="w-full px-8 py-4 rounded-2xl bg-gradient-to-r from-primary to-cyan-500 hover:from-primary/90 hover:to-cyan-500/90 text-primary-foreground font-bold text-lg transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-3 group shadow-2xl shadow-primary/20 hover:scale-[1.02] disabled:hover:scale-100 disabled:shadow-none"
           >
             {understood ? (
               <>
                 <CheckCircle className="w-6 h-6 group-hover:scale-110 transition-transform" />
-                Enter UrbanShade OS
+                {skipInstall ? "Quick Start" : "Enter UrbanShade OS"}
               </>
             ) : (
               <>

@@ -46,6 +46,7 @@ import { InstantChat } from "./apps/InstantChat";
 import { GenericInstaller } from "./apps/GenericInstaller";
 import { AccountSettings } from "./apps/AccountSettings";
 import { ImageEditor } from "./apps/ImageEditor";
+import { ComputerManagement } from "./apps/ComputerManagement";
 
 interface WindowData {
   id: string;
@@ -229,6 +230,8 @@ export const WindowManager = ({ windows, onClose, onFocus, onMinimize, allWindow
         return <AccountSettings />;
       case "image-editor":
         return <ImageEditor />;
+      case "computer-management":
+        return <ComputerManagement />;
       default:
         return (
           <div className="p-4 text-muted-foreground">

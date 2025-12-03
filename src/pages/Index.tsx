@@ -336,9 +336,29 @@ const Index = () => {
   };
 
   if (!disclaimerAccepted) {
-    return <DisclaimerScreen onAccept={() => {
+    return <DisclaimerScreen onAccept={(skipInstall) => {
       localStorage.setItem("urbanshade_disclaimer_accepted", "true");
       setDisclaimerAccepted(true);
+      
+      if (skipInstall) {
+        // Create default admin and skip installation
+        const defaultAdmin = {
+          username: "Admin",
+          password: "admin",
+          id: "P000",
+          name: "Administrator (Admin)",
+          role: "System Administrator",
+          clearance: 5,
+          department: "Administration",
+          location: "Control Room",
+          status: "active",
+          phone: "x1000",
+          email: "admin@urbanshade.corp",
+          createdAt: new Date().toISOString()
+        };
+        localStorage.setItem("urbanshade_admin", JSON.stringify(defaultAdmin));
+        setAdminSetupComplete(true);
+      }
     }} />;
   }
 
