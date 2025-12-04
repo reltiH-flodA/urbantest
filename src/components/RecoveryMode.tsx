@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { Terminal, RotateCcw, HardDrive, Image, Settings, ArrowLeft, Download, Upload, FileImage, Edit, Trash2, Zap, Shield } from "lucide-react";
+import { Terminal, RotateCcw, HardDrive, Image, Settings, ArrowLeft, Download, Upload, FileImage, Edit, Trash2, Zap, Shield, Bug, Database, Users, Key, FileText, RefreshCw, Unlock } from "lucide-react";
 import { toast } from "sonner";
 
 interface RecoveryModeProps {
@@ -14,7 +14,7 @@ interface RecoveryImage {
 }
 
 export const RecoveryMode = ({ onExit }: RecoveryModeProps) => {
-  const [view, setView] = useState<"menu" | "restore" | "flash" | "cmd" | "advanced" | "processing" | "image-editor" | "emergency-admin">("menu");
+  const [view, setView] = useState<"menu" | "restore" | "flash" | "cmd" | "advanced" | "processing" | "image-editor" | "emergency-admin" | "dev-mode">("menu");
   const [cmdOutput, setCmdOutput] = useState<string[]>([
     "URBANSHADE Recovery Console v3.7",
     "Type 'help' for available commands",
@@ -34,6 +34,7 @@ export const RecoveryMode = ({ onExit }: RecoveryModeProps) => {
   const [editValue, setEditValue] = useState("");
   const [processingMessage, setProcessingMessage] = useState("");
   const [processingProgress, setProcessingProgress] = useState(0);
+  const [devLogs, setDevLogs] = useState<Array<{ type: string; message: string; time: string }>>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const recoveryDiscInputRef = useRef<HTMLInputElement>(null);
 
@@ -61,21 +62,25 @@ export const RecoveryMode = ({ onExit }: RecoveryModeProps) => {
   };
 
   const handleExportRecoveryDisc = () => {
-    // Create a special recovery disc with emergency admin access
     const recoveryDisc = {
       type: "urbanshade_recovery_disc",
-      version: "2.2.0",
+      version: "2.3.0",
       created: new Date().toISOString(),
       emergency_admin: true,
       auth_key: btoa(`emergency_${Date.now()}_${Math.random().toString(36)}`),
-      system_snapshot: {} as Record<string, string>
+      system_snapshot: {} as Record<string, string>,
+      accounts_backup: localStorage.getItem("urbanshade_accounts") || "[]",
+      admin_backup: localStorage.getItem("urbanshade_admin") || "{}",
+      settings_backup: {} as Record<string, string>
     };
     
-    // Include critical system data
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
       if (key && !key.startsWith('urbanshade_recovery_images')) {
         recoveryDisc.system_snapshot[key] = localStorage.getItem(key) || "";
+        if (key.startsWith('settings_')) {
+          recoveryDisc.settings_backup[key] = localStorage.getItem(key) || "";
+        }
       }
     }
     
@@ -88,7 +93,7 @@ export const RecoveryMode = ({ onExit }: RecoveryModeProps) => {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    toast.success("Recovery disc exported! This file contains emergency admin access.");
+    toast.success("Recovery disc exported with full system backup!");
   };
 
   const handleImportRecoveryDisc = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -104,7 +109,6 @@ export const RecoveryMode = ({ onExit }: RecoveryModeProps) => {
           return;
         }
         
-        // Store the disc data for emergency admin access
         localStorage.setItem("urbanshade_emergency_disc", JSON.stringify(disc));
         setView("emergency-admin");
         toast.success("Recovery disc loaded! Emergency admin panel available.");
@@ -366,6 +370,16 @@ export const RecoveryMode = ({ onExit }: RecoveryModeProps) => {
     }, 100);
   };
 
+  const handleEnterDevMode = () => {
+    setDevLogs([
+      { type: "info", message: "Developer Mode initialized", time: new Date().toLocaleTimeString() },
+      { type: "info", message: "System diagnostics starting...", time: new Date().toLocaleTimeString() },
+      { type: "success", message: "LocalStorage status: OK", time: new Date().toLocaleTimeString() },
+      { type: "info", message: `Found ${localStorage.length} stored entries`, time: new Date().toLocaleTimeString() },
+    ]);
+    setView("dev-mode");
+  };
+
   const renderMenu = () => (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-b from-[#0a1929] to-[#001f3f]">
       <div className="mb-8 text-center animate-fade-in">
@@ -467,6 +481,22 @@ export const RecoveryMode = ({ onExit }: RecoveryModeProps) => {
         {/* Separator */}
         <div className="border-t border-cyan-500/20 my-2" />
 
+        {/* Dev Mode */}
+        <button
+          onClick={handleEnterDevMode}
+          className="bg-pink-500/10 hover:bg-pink-500/20 border border-pink-500/30 rounded-lg p-6 text-left transition-all hover:scale-[1.02]"
+        >
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-pink-500/20 rounded flex items-center justify-center">
+              <Bug className="w-6 h-6 text-pink-400" />
+            </div>
+            <div>
+              <div className="font-bold text-lg text-pink-400">Developer Mode</div>
+              <div className="text-sm opacity-70 text-gray-300">Debug console with simplified error messages</div>
+            </div>
+          </div>
+        </button>
+
         {/* Quick Reset */}
         <button
           onClick={handleQuickReset}
@@ -526,6 +556,129 @@ export const RecoveryMode = ({ onExit }: RecoveryModeProps) => {
       </div>
     </div>
   );
+
+  const renderDevMode = () => {
+    const addLog = (type: string, message: string) => {
+      setDevLogs(prev => [...prev, { type, message, time: new Date().toLocaleTimeString() }]);
+    };
+
+    const runDiagnostic = (name: string) => {
+      addLog("info", `Running ${name}...`);
+      setTimeout(() => {
+        if (Math.random() > 0.1) {
+          addLog("success", `${name} completed - No issues found`);
+        } else {
+          addLog("warn", `${name} found minor issues - Check details`);
+        }
+      }, 500 + Math.random() * 1000);
+    };
+
+    const simplifyError = (error: string): string => {
+      if (error.includes("undefined")) return "Something wasn't set up properly";
+      if (error.includes("null")) return "Missing data - check if everything is saved";
+      if (error.includes("network")) return "Connection issue - check your internet";
+      if (error.includes("storage")) return "Storage problem - might be full";
+      if (error.includes("permission")) return "Not allowed to do that - need different access";
+      return error;
+    };
+
+    return (
+      <div className="fixed inset-0 bg-[#1a1a2e] text-gray-100 flex flex-col">
+        <div className="bg-gradient-to-r from-pink-600/20 to-purple-600/20 border-b border-pink-500/30 p-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Bug className="w-6 h-6 text-pink-400" />
+            <div>
+              <h2 className="font-bold text-lg text-pink-400">Developer Mode</h2>
+              <p className="text-xs text-gray-400">Debug console with simplified messages</p>
+            </div>
+          </div>
+          <button 
+            onClick={() => setView("menu")}
+            className="px-4 py-2 bg-pink-500/20 hover:bg-pink-500/30 border border-pink-500/30 rounded-lg text-pink-400 text-sm"
+          >
+            Exit Dev Mode
+          </button>
+        </div>
+
+        {/* Diagnostic Buttons */}
+        <div className="p-4 border-b border-gray-700 bg-gray-900/50">
+          <div className="flex flex-wrap gap-2">
+            <button onClick={() => runDiagnostic("Memory Check")} className="px-3 py-1.5 bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/30 rounded text-xs text-blue-400">
+              Memory Check
+            </button>
+            <button onClick={() => runDiagnostic("Storage Scan")} className="px-3 py-1.5 bg-green-500/20 hover:bg-green-500/30 border border-green-500/30 rounded text-xs text-green-400">
+              Storage Scan
+            </button>
+            <button onClick={() => runDiagnostic("Network Test")} className="px-3 py-1.5 bg-yellow-500/20 hover:bg-yellow-500/30 border border-yellow-500/30 rounded text-xs text-yellow-400">
+              Network Test
+            </button>
+            <button onClick={() => runDiagnostic("App Integrity")} className="px-3 py-1.5 bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500/30 rounded text-xs text-purple-400">
+              App Integrity
+            </button>
+            <button onClick={() => {
+              addLog("error", simplifyError("TypeError: Cannot read property 'undefined' of null"));
+              addLog("info", "This is a simulated error for testing");
+            }} className="px-3 py-1.5 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 rounded text-xs text-red-400">
+              Simulate Error
+            </button>
+            <button onClick={() => setDevLogs([])} className="px-3 py-1.5 bg-gray-500/20 hover:bg-gray-500/30 border border-gray-500/30 rounded text-xs text-gray-400">
+              Clear Logs
+            </button>
+          </div>
+        </div>
+
+        {/* Log Output */}
+        <div className="flex-1 p-4 overflow-auto font-mono text-sm">
+          {devLogs.map((log, i) => (
+            <div key={i} className={`mb-2 p-2 rounded ${
+              log.type === 'error' ? 'bg-red-500/10 border border-red-500/20' :
+              log.type === 'warn' ? 'bg-yellow-500/10 border border-yellow-500/20' :
+              log.type === 'success' ? 'bg-green-500/10 border border-green-500/20' :
+              'bg-gray-800/50 border border-gray-700'
+            }`}>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-500">[{log.time}]</span>
+                <span className={`text-xs font-bold uppercase ${
+                  log.type === 'error' ? 'text-red-400' :
+                  log.type === 'warn' ? 'text-yellow-400' :
+                  log.type === 'success' ? 'text-green-400' :
+                  'text-blue-400'
+                }`}>
+                  {log.type}
+                </span>
+              </div>
+              <div className="mt-1 text-gray-300">{log.message}</div>
+            </div>
+          ))}
+          {devLogs.length === 0 && (
+            <div className="text-center text-gray-500 py-8">
+              No logs yet. Run a diagnostic or wait for system events.
+            </div>
+          )}
+        </div>
+
+        {/* System Info */}
+        <div className="p-4 border-t border-gray-700 bg-gray-900/50 grid grid-cols-4 gap-4 text-xs">
+          <div>
+            <div className="text-gray-500">Storage Used</div>
+            <div className="text-cyan-400 font-mono">{(JSON.stringify(localStorage).length / 1024).toFixed(1)} KB</div>
+          </div>
+          <div>
+            <div className="text-gray-500">Entries</div>
+            <div className="text-cyan-400 font-mono">{localStorage.length}</div>
+          </div>
+          <div>
+            <div className="text-gray-500">Recovery Images</div>
+            <div className="text-cyan-400 font-mono">{recoveryImages.length}</div>
+          </div>
+          <div>
+            <div className="text-gray-500">Session</div>
+            <div className="text-cyan-400 font-mono">{new Date().toLocaleTimeString()}</div>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   const renderRestore = () => (
     <div className="p-8 max-w-4xl mx-auto">
@@ -892,8 +1045,46 @@ export const RecoveryMode = ({ onExit }: RecoveryModeProps) => {
       toast.success("All restrictions cleared.");
     };
 
+    const handleRestoreSettingsOnly = () => {
+      if (!disc.settings_backup || Object.keys(disc.settings_backup).length === 0) {
+        toast.error("No settings backup found on this disc");
+        return;
+      }
+      if (!window.confirm("Restore only settings from disc? This will not affect accounts or other data.")) return;
+      Object.entries(disc.settings_backup).forEach(([key, value]) => {
+        localStorage.setItem(key, value as string);
+      });
+      toast.success("Settings restored from disc!");
+    };
+
+    const handleRestoreAccountsOnly = () => {
+      if (!disc.accounts_backup && !disc.admin_backup) {
+        toast.error("No account backup found on this disc");
+        return;
+      }
+      if (!window.confirm("Restore accounts from disc? This will replace current accounts.")) return;
+      if (disc.accounts_backup) localStorage.setItem("urbanshade_accounts", disc.accounts_backup);
+      if (disc.admin_backup) localStorage.setItem("urbanshade_admin", disc.admin_backup);
+      toast.success("Accounts restored from disc!");
+    };
+
+    const handleResetPassword = () => {
+      try {
+        const admin = JSON.parse(localStorage.getItem("urbanshade_admin") || "{}");
+        admin.password = "";
+        localStorage.setItem("urbanshade_admin", JSON.stringify(admin));
+        toast.success("Admin password has been reset to empty!");
+      } catch {
+        toast.error("Failed to reset password");
+      }
+    };
+
+    const handleExportCurrentAsDisc = () => {
+      handleExportRecoveryDisc();
+    };
+
     return (
-      <div className="p-8 max-w-4xl mx-auto">
+      <div className="p-8 max-w-5xl mx-auto overflow-auto max-h-screen">
         <button onClick={() => setView("menu")} className="mb-6 flex items-center gap-2 hover:opacity-70 text-purple-400">
           <ArrowLeft className="w-4 h-4" />
           Back to menu
@@ -914,8 +1105,11 @@ export const RecoveryMode = ({ onExit }: RecoveryModeProps) => {
         <div className="grid gap-4">
           {/* Account Recovery */}
           <div className="bg-white/5 border border-white/10 rounded-lg p-4">
-            <h3 className="font-bold text-lg mb-3 text-cyan-400">Account Recovery</h3>
-            <div className="grid grid-cols-2 gap-3">
+            <h3 className="font-bold text-lg mb-3 flex items-center gap-2">
+              <Users className="w-5 h-5 text-cyan-400" />
+              Account Recovery
+            </h3>
+            <div className="grid grid-cols-3 gap-3">
               <button
                 onClick={handleCreateEmergencyAdmin}
                 className="p-3 bg-green-500/20 hover:bg-green-500/30 border border-green-500/30 rounded text-left"
@@ -930,20 +1124,66 @@ export const RecoveryMode = ({ onExit }: RecoveryModeProps) => {
                 <div className="font-bold text-red-400">Clear All Accounts</div>
                 <div className="text-xs text-gray-400">Remove all user accounts</div>
               </button>
+              <button
+                onClick={handleResetPassword}
+                className="p-3 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/30 rounded text-left"
+              >
+                <div className="font-bold text-amber-400 flex items-center gap-2">
+                  <Unlock className="w-4 h-4" />
+                  Reset Admin Password
+                </div>
+                <div className="text-xs text-gray-400">Set admin password to empty</div>
+              </button>
             </div>
           </div>
 
           {/* System Recovery */}
           <div className="bg-white/5 border border-white/10 rounded-lg p-4">
-            <h3 className="font-bold text-lg mb-3 text-cyan-400">System Recovery</h3>
-            <div className="grid grid-cols-2 gap-3">
+            <h3 className="font-bold text-lg mb-3 flex items-center gap-2">
+              <Database className="w-5 h-5 text-cyan-400" />
+              System Recovery
+            </h3>
+            <div className="grid grid-cols-3 gap-3">
               <button
                 onClick={handleRestoreFromDisc}
                 className="p-3 bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/30 rounded text-left"
               >
-                <div className="font-bold text-cyan-400">Restore From Disc</div>
-                <div className="text-xs text-gray-400">Restore system snapshot from this disc</div>
+                <div className="font-bold text-cyan-400 flex items-center gap-2">
+                  <RefreshCw className="w-4 h-4" />
+                  Full Restore
+                </div>
+                <div className="text-xs text-gray-400">Restore entire system from disc</div>
               </button>
+              <button
+                onClick={handleRestoreSettingsOnly}
+                className="p-3 bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/30 rounded text-left"
+              >
+                <div className="font-bold text-blue-400 flex items-center gap-2">
+                  <Settings className="w-4 h-4" />
+                  Restore Settings
+                </div>
+                <div className="text-xs text-gray-400">Only restore system settings</div>
+              </button>
+              <button
+                onClick={handleRestoreAccountsOnly}
+                className="p-3 bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500/30 rounded text-left"
+              >
+                <div className="font-bold text-purple-400 flex items-center gap-2">
+                  <Users className="w-4 h-4" />
+                  Restore Accounts
+                </div>
+                <div className="text-xs text-gray-400">Only restore user accounts</div>
+              </button>
+            </div>
+          </div>
+
+          {/* Permissions & Security */}
+          <div className="bg-white/5 border border-white/10 rounded-lg p-4">
+            <h3 className="font-bold text-lg mb-3 flex items-center gap-2">
+              <Key className="w-5 h-5 text-cyan-400" />
+              Security & Permissions
+            </h3>
+            <div className="grid grid-cols-3 gap-3">
               <button
                 onClick={handleResetPermissions}
                 className="p-3 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/30 rounded text-left"
@@ -951,19 +1191,52 @@ export const RecoveryMode = ({ onExit }: RecoveryModeProps) => {
                 <div className="font-bold text-amber-400">Reset Restrictions</div>
                 <div className="text-xs text-gray-400">Clear lockdown and maintenance modes</div>
               </button>
+              <button
+                onClick={() => {
+                  localStorage.removeItem("urbanshade_oem_unlock");
+                  toast.success("OEM lock reset to locked state");
+                }}
+                className="p-3 bg-orange-500/20 hover:bg-orange-500/30 border border-orange-500/30 rounded text-left"
+              >
+                <div className="font-bold text-orange-400">Reset OEM Lock</div>
+                <div className="text-xs text-gray-400">Re-lock bootloader</div>
+              </button>
+              <button
+                onClick={() => {
+                  localStorage.setItem("urbanshade_oem_unlock", "true");
+                  toast.success("OEM unlocked!");
+                }}
+                className="p-3 bg-green-500/20 hover:bg-green-500/30 border border-green-500/30 rounded text-left"
+              >
+                <div className="font-bold text-green-400">Force OEM Unlock</div>
+                <div className="text-xs text-gray-400">Unlock bootloader</div>
+              </button>
             </div>
           </div>
 
           {/* Data Tools */}
           <div className="bg-white/5 border border-white/10 rounded-lg p-4">
-            <h3 className="font-bold text-lg mb-3 text-cyan-400">Data Tools</h3>
-            <div className="grid grid-cols-2 gap-3">
+            <h3 className="font-bold text-lg mb-3 flex items-center gap-2">
+              <FileText className="w-5 h-5 text-cyan-400" />
+              Data Tools
+            </h3>
+            <div className="grid grid-cols-3 gap-3">
               <button
                 onClick={handleQuickReset}
                 className="p-3 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 rounded text-left"
               >
                 <div className="font-bold text-red-400">Factory Reset</div>
                 <div className="text-xs text-gray-400">Wipe everything and start fresh</div>
+              </button>
+              <button
+                onClick={handleExportCurrentAsDisc}
+                className="p-3 bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/30 rounded text-left"
+              >
+                <div className="font-bold text-cyan-400 flex items-center gap-2">
+                  <Download className="w-4 h-4" />
+                  Export Current State
+                </div>
+                <div className="text-xs text-gray-400">Create new recovery disc from current</div>
               </button>
               <button
                 onClick={() => {
@@ -982,7 +1255,7 @@ export const RecoveryMode = ({ onExit }: RecoveryModeProps) => {
           {/* Disc Info */}
           <div className="bg-white/5 border border-white/10 rounded-lg p-4">
             <h3 className="font-bold text-lg mb-3 text-cyan-400">Disc Information</h3>
-            <div className="grid grid-cols-2 gap-3 text-sm">
+            <div className="grid grid-cols-4 gap-3 text-sm">
               <div><span className="text-gray-400">Version:</span> {disc.version}</div>
               <div><span className="text-gray-400">Created:</span> {new Date(disc.created).toLocaleDateString()}</div>
               <div><span className="text-gray-400">Snapshot Size:</span> {Object.keys(disc.system_snapshot || {}).length} entries</div>
@@ -1004,6 +1277,7 @@ export const RecoveryMode = ({ onExit }: RecoveryModeProps) => {
       {view === "advanced" && renderAdvanced()}
       {view === "processing" && renderProcessing()}
       {view === "emergency-admin" && renderEmergencyAdmin()}
+      {view === "dev-mode" && renderDevMode()}
     </div>
   );
 };

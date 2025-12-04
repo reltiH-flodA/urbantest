@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { App } from "./Desktop";
 
 interface DesktopIconProps {
@@ -27,57 +27,59 @@ export const DesktopIcon = ({ app, onOpen, onDragStart, onDragEnd }: DesktopIcon
     }
   };
 
-  const handleMouseMove = (e: MouseEvent) => {
-    if (!isDragging || !iconRef.current) return;
-    
-    const parent = iconRef.current.parentElement;
-    if (!parent) return;
-    
-    const parentRect = parent.getBoundingClientRect();
-    const x = e.clientX - parentRect.left - offset.x;
-    const y = e.clientY - parentRect.top - offset.y;
-    
-    iconRef.current.style.left = `${x}px`;
-    iconRef.current.style.top = `${y}px`;
-  };
+  useEffect(() => {
+    if (!isDragging) return;
 
-  const handleMouseUp = (e: MouseEvent) => {
-    if (!isDragging || !iconRef.current) return;
-    
-    const parent = iconRef.current.parentElement;
-    if (!parent) return;
-    
-    const parentRect = parent.getBoundingClientRect();
-    const x = e.clientX - parentRect.left - offset.x;
-    const y = e.clientY - parentRect.top - offset.y;
-    
-    onDragEnd?.(app.id, x, y);
-    setIsDragging(false);
-  };
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!iconRef.current) return;
+      
+      const parent = iconRef.current.parentElement;
+      if (!parent) return;
+      
+      const parentRect = parent.getBoundingClientRect();
+      const x = e.clientX - parentRect.left - offset.x;
+      const y = e.clientY - parentRect.top - offset.y;
+      
+      iconRef.current.style.left = `${x}px`;
+      iconRef.current.style.top = `${y}px`;
+    };
 
-  // Add/remove global mouse event listeners
-  useState(() => {
-    if (isDragging) {
-      window.addEventListener('mousemove', handleMouseMove);
-      window.addEventListener('mouseup', handleMouseUp);
-      return () => {
-        window.removeEventListener('mousemove', handleMouseMove);
-        window.removeEventListener('mouseup', handleMouseUp);
-      };
-    }
-  });
+    const handleMouseUp = (e: MouseEvent) => {
+      if (!iconRef.current) return;
+      
+      const parent = iconRef.current.parentElement;
+      if (!parent) return;
+      
+      const parentRect = parent.getBoundingClientRect();
+      const x = e.clientX - parentRect.left - offset.x;
+      const y = e.clientY - parentRect.top - offset.y;
+      
+      onDragEnd?.(app.id, x, y);
+      setIsDragging(false);
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging, offset, app.id, onDragEnd]);
 
   return (
     <div
       ref={iconRef}
-      className={`w-30 flex flex-col items-center gap-2 text-center select-none group animate-fade-in ${isDragging ? 'cursor-grabbing scale-110' : 'cursor-grab hover-scale'}`}
+      className={`w-[100px] flex flex-col items-center gap-2 text-center select-none group animate-fade-in ${isDragging ? 'cursor-grabbing scale-110' : 'cursor-grab hover-scale'}`}
       onDoubleClick={() => app.run()}
       onMouseDown={handleMouseDown}
     >
-      <div className={`w-22 h-22 rounded-xl glass-panel flex items-center justify-center text-primary group-hover:urbanshade-glow transition-all duration-300 ${isDragging ? 'scale-110 shadow-lg' : ''}`}>
-        {app.icon}
+      <div className={`w-16 h-16 rounded-xl glass-panel flex items-center justify-center text-primary group-hover:urbanshade-glow transition-all duration-300 ${isDragging ? 'scale-110 shadow-lg' : ''}`}>
+        <div className="w-10 h-10 flex items-center justify-center [&>svg]:w-10 [&>svg]:h-10">
+          {app.icon}
+        </div>
       </div>
-      <div className="text-xs text-muted-foreground transition-colors group-hover:text-foreground">{app.name}</div>
+      <div className="text-xs text-muted-foreground transition-colors group-hover:text-foreground max-w-[90px] truncate">{app.name}</div>
     </div>
   );
 };

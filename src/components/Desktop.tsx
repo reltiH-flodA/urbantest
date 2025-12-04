@@ -739,6 +739,9 @@ export const Desktop = ({
         onPinnedClick={openWindow}
         windows={windows}
         onRestoreWindow={restoreWindow}
+        onShutdown={onShutdown}
+        onReboot={onReboot}
+        onLogout={onLogout}
       />
 
       {/* Context Menu */}

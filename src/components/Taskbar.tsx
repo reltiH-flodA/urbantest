@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
-import { Bell, Volume2, VolumeX } from "lucide-react";
+import { Bell, Volume2, VolumeX, Power } from "lucide-react";
 import { App } from "./Desktop";
 import { NotificationCenter } from "./NotificationCenter";
+import { ShutdownOptionsDialog } from "./ShutdownOptionsDialog";
 import { useNotifications } from "@/hooks/useNotifications";
 
 interface WindowData {
@@ -17,11 +18,24 @@ interface TaskbarProps {
   onPinnedClick: (app: App) => void;
   windows?: WindowData[];
   onRestoreWindow?: (id: string) => void;
+  onShutdown?: () => void;
+  onReboot?: () => void;
+  onLogout?: () => void;
 }
 
-export const Taskbar = ({ onStartClick, pinnedApps, onPinnedClick, windows = [], onRestoreWindow }: TaskbarProps) => {
+export const Taskbar = ({ 
+  onStartClick, 
+  pinnedApps, 
+  onPinnedClick, 
+  windows = [], 
+  onRestoreWindow,
+  onShutdown,
+  onReboot,
+  onLogout
+}: TaskbarProps) => {
   const [time, setTime] = useState(new Date());
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [powerMenuOpen, setPowerMenuOpen] = useState(false);
   const { unreadCount } = useNotifications();
   const [soundEnabled, setSoundEnabled] = useState(() => localStorage.getItem('settings_sound_enabled') !== 'false');
 
@@ -44,92 +58,123 @@ export const Taskbar = ({ onStartClick, pinnedApps, onPinnedClick, windows = [],
   const minimizedWindows = windows.filter(w => w.minimized);
 
   return (
-    <div className="fixed left-0 right-0 bottom-0 h-[60px] flex justify-between items-center px-5 z-[800] bg-black/60 backdrop-blur-sm border-t border-white/5 animate-slide-in-right">
-      <div className="flex items-center gap-3">
-        <button
-          onClick={onStartClick}
-          data-start-button
-          className="flex items-center gap-3 px-4 py-2.5 rounded-xl glass-panel hover:bg-white/5 transition-all duration-200 hover-scale"
-        >
-          <div className="w-9 h-9 rounded-lg bg-gradient-to-b from-primary to-primary/20 flex items-center justify-center text-black font-extrabold text-lg">
-            U
-          </div>
-          <div className="text-sm font-bold text-muted-foreground">Urbanshade</div>
-        </button>
+    <>
+      <div className="fixed left-0 right-0 bottom-0 h-[60px] flex justify-between items-center px-5 z-[800] bg-black/60 backdrop-blur-sm border-t border-white/5 animate-slide-in-right">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={onStartClick}
+            data-start-button
+            className="flex items-center gap-3 px-4 py-2.5 rounded-xl glass-panel hover:bg-white/5 transition-all duration-200 hover-scale"
+          >
+            <div className="w-9 h-9 rounded-lg bg-gradient-to-b from-primary to-primary/20 flex items-center justify-center text-black font-extrabold text-lg">
+              U
+            </div>
+            <div className="text-sm font-bold text-muted-foreground">Urbanshade</div>
+          </button>
 
-        <div className="flex gap-2">
-          {pinnedApps.map(app => (
-            <button
-              key={app.id}
-              onClick={() => onPinnedClick(app)}
-              className="w-11 h-11 rounded-lg flex items-center justify-center text-primary hover:bg-white/5 transition-all duration-200 hover-scale"
-              title={app.name}
-            >
-              {app.icon}
-            </button>
-          ))}
-        </div>
-
-        {/* Open & Minimized Windows */}
-        {(openWindows.length > 0 || minimizedWindows.length > 0) && (
-          <div className="flex gap-2 ml-2 pl-2 border-l border-white/10">
-            {/* Open Windows */}
-            {openWindows.map(window => (
+          <div className="flex gap-2">
+            {pinnedApps.map(app => (
               <button
-                key={window.id}
-                onClick={() => onRestoreWindow?.(window.id)}
-                className="w-11 h-11 rounded-lg flex items-center justify-center text-primary bg-primary/10 hover:bg-primary/20 transition-all duration-200 hover-scale border border-primary/30"
-                title={window.app.name}
+                key={app.id}
+                onClick={() => onPinnedClick(app)}
+                className="w-11 h-11 rounded-lg flex items-center justify-center text-primary hover:bg-white/5 transition-all duration-200 hover-scale"
+                title={app.name}
               >
-                {window.app.icon}
-              </button>
-            ))}
-            {/* Minimized Windows */}
-            {minimizedWindows.map(window => (
-              <button
-                key={window.id}
-                onClick={() => onRestoreWindow?.(window.id)}
-                className="w-11 h-11 rounded-lg flex items-center justify-center text-primary/60 hover:text-primary hover:bg-white/5 transition-all duration-200 hover-scale"
-                title={`Restore ${window.app.name}`}
-              >
-                {window.app.icon}
+                <div className="w-6 h-6 flex items-center justify-center [&>svg]:w-6 [&>svg]:h-6">
+                  {app.icon}
+                </div>
               </button>
             ))}
           </div>
-        )}
-      </div>
 
-      <div className="flex items-center gap-3">
-        {/* Sound Toggle */}
-        <button
-          onClick={toggleSound}
-          className="w-9 h-9 rounded-lg flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-white/5 transition-all"
-          title={soundEnabled ? "Mute sounds" : "Enable sounds"}
-        >
-          {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
-        </button>
-
-        {/* Notifications */}
-        <button
-          onClick={() => setNotificationsOpen(!notificationsOpen)}
-          className="w-9 h-9 rounded-lg flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-white/5 transition-all relative"
-          title="Notifications"
-        >
-          <Bell className="w-4 h-4" />
-          {unreadCount > 0 && (
-            <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center animate-pulse">
-              {unreadCount > 9 ? '9+' : unreadCount}
-            </span>
+          {/* Open & Minimized Windows */}
+          {(openWindows.length > 0 || minimizedWindows.length > 0) && (
+            <div className="flex gap-2 ml-2 pl-2 border-l border-white/10">
+              {/* Open Windows */}
+              {openWindows.map(window => (
+                <button
+                  key={window.id}
+                  onClick={() => onRestoreWindow?.(window.id)}
+                  className="w-11 h-11 rounded-lg flex items-center justify-center text-primary bg-primary/10 hover:bg-primary/20 transition-all duration-200 hover-scale border border-primary/30"
+                  title={window.app.name}
+                >
+                  <div className="w-6 h-6 flex items-center justify-center [&>svg]:w-6 [&>svg]:h-6">
+                    {window.app.icon}
+                  </div>
+                </button>
+              ))}
+              {/* Minimized Windows */}
+              {minimizedWindows.map(window => (
+                <button
+                  key={window.id}
+                  onClick={() => onRestoreWindow?.(window.id)}
+                  className="w-11 h-11 rounded-lg flex items-center justify-center text-primary/60 hover:text-primary hover:bg-white/5 transition-all duration-200 hover-scale"
+                  title={`Restore ${window.app.name}`}
+                >
+                  <div className="w-6 h-6 flex items-center justify-center [&>svg]:w-6 [&>svg]:h-6">
+                    {window.app.icon}
+                  </div>
+                </button>
+              ))}
+            </div>
           )}
-        </button>
-
-        <div className="text-sm font-mono text-muted-foreground">
-          {formatTime(time)}
         </div>
+
+        <div className="flex items-center gap-3">
+          {/* Sound Toggle */}
+          <button
+            onClick={toggleSound}
+            className="w-9 h-9 rounded-lg flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-white/5 transition-all"
+            title={soundEnabled ? "Mute sounds" : "Enable sounds"}
+          >
+            {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
+          </button>
+
+          {/* Notifications */}
+          <button
+            onClick={() => setNotificationsOpen(!notificationsOpen)}
+            className="w-9 h-9 rounded-lg flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-white/5 transition-all relative"
+            title="Notifications"
+          >
+            <Bell className="w-4 h-4" />
+            {unreadCount > 0 && (
+              <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center animate-pulse">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
+          </button>
+
+          {/* Power Button */}
+          <button
+            onClick={() => setPowerMenuOpen(true)}
+            className="w-9 h-9 rounded-lg flex items-center justify-center text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition-all"
+            title="Power options"
+          >
+            <Power className="w-4 h-4" />
+          </button>
+
+          <div className="text-sm font-mono text-muted-foreground">
+            {formatTime(time)}
+          </div>
+        </div>
+
+        {/* Notification Center */}
+        <NotificationCenter open={notificationsOpen} onClose={() => setNotificationsOpen(false)} />
       </div>
 
-      {/* Notification Center */}
-      <NotificationCenter open={notificationsOpen} onClose={() => setNotificationsOpen(false)} />
-    </div>
+      {/* Power Options Dialog */}
+      {powerMenuOpen && onShutdown && onReboot && onLogout && (
+        <ShutdownOptionsDialog
+          onClose={() => setPowerMenuOpen(false)}
+          onShutdown={onShutdown}
+          onSignOut={onLogout}
+          onLock={() => {
+            // Lock functionality - just logout for now
+            onLogout();
+          }}
+          onRestart={onReboot}
+        />
+      )}
+    </>
   );
 };

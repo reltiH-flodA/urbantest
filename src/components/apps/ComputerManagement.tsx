@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { Monitor, Cpu, HardDrive, Wifi, WifiOff, Power, RefreshCw, Settings, AlertTriangle, CheckCircle, Clock, User, Terminal, Activity, X, Maximize2, Minimize2, Send } from "lucide-react";
+import { Monitor, Cpu, HardDrive, Wifi, WifiOff, Power, RefreshCw, Settings, AlertTriangle, CheckCircle, Clock, User, Terminal, Activity, X, Maximize2, Minimize2, Send, Search, Server, Laptop, Box } from "lucide-react";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface Computer {
   id: string;
@@ -36,13 +37,12 @@ export const ComputerManagement = () => {
 
   const [selectedComputer, setSelectedComputer] = useState<Computer | null>(null);
   const [filter, setFilter] = useState<"all" | "online" | "offline" | "warning">("all");
+  const [search, setSearch] = useState("");
   const [remoteDesktopOpen, setRemoteDesktopOpen] = useState(false);
   const [remoteDesktopMaximized, setRemoteDesktopMaximized] = useState(false);
   const [terminalOutput, setTerminalOutput] = useState<string[]>([]);
   const [terminalInput, setTerminalInput] = useState("");
-  const [activeTab, setActiveTab] = useState<"overview" | "processes" | "terminal">("overview");
 
-  // Simulate live resource updates
   useEffect(() => {
     const interval = setInterval(() => {
       setComputers(prev => prev.map(c => {
@@ -61,9 +61,9 @@ export const ComputerManagement = () => {
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case "online": return <CheckCircle className="w-4 h-4 text-emerald-500" />;
-      case "offline": return <WifiOff className="w-4 h-4 text-red-500" />;
-      case "warning": return <AlertTriangle className="w-4 h-4 text-amber-500" />;
+      case "online": return <CheckCircle className="w-4 h-4 text-emerald-400" />;
+      case "offline": return <WifiOff className="w-4 h-4 text-red-400" />;
+      case "warning": return <AlertTriangle className="w-4 h-4 text-amber-400" />;
       case "maintenance": return <Settings className="w-4 h-4 text-blue-400 animate-spin" />;
       default: return null;
     }
@@ -71,10 +71,10 @@ export const ComputerManagement = () => {
 
   const getTypeIcon = (type: string) => {
     switch (type) {
-      case "workstation": return <Monitor className="w-4 h-4" />;
-      case "server": return <HardDrive className="w-4 h-4" />;
-      case "terminal": return <Cpu className="w-4 h-4" />;
-      case "embedded": return <Cpu className="w-4 h-4" />;
+      case "workstation": return <Laptop className="w-4 h-4" />;
+      case "server": return <Server className="w-4 h-4" />;
+      case "terminal": return <Monitor className="w-4 h-4" />;
+      case "embedded": return <Box className="w-4 h-4" />;
       default: return <Monitor className="w-4 h-4" />;
     }
   };
@@ -86,8 +86,11 @@ export const ComputerManagement = () => {
   };
 
   const filteredComputers = computers.filter(c => {
-    if (filter === "all") return true;
-    return c.status === filter;
+    const matchesFilter = filter === "all" || c.status === filter;
+    const matchesSearch = c.name.toLowerCase().includes(search.toLowerCase()) || 
+                          c.ip.includes(search) || 
+                          c.id.toLowerCase().includes(search.toLowerCase());
+    return matchesFilter && matchesSearch;
   });
 
   const stats = {
@@ -149,100 +152,119 @@ export const ComputerManagement = () => {
   };
 
   return (
-    <div className="flex h-full bg-slate-950 text-slate-100 relative">
+    <div className="flex h-full bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-white relative">
       {/* Sidebar */}
-      <div className="w-80 border-r border-slate-800 flex flex-col bg-slate-900/50">
-        <div className="p-4 border-b border-slate-800">
-          <div className="flex items-center gap-2 mb-4">
-            <Monitor className="w-5 h-5 text-cyan-400" />
-            <h2 className="font-bold text-lg">Facility Computers</h2>
+      <div className="w-80 border-r border-cyan-500/20 flex flex-col bg-black/20">
+        <div className="p-4 border-b border-cyan-500/20 bg-gradient-to-r from-cyan-500/5 to-transparent">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-2 rounded-lg bg-cyan-500/10 border border-cyan-500/30">
+              <Monitor className="w-6 h-6 text-cyan-400" />
+            </div>
+            <div>
+              <h2 className="font-bold text-lg">Computer Management</h2>
+              <p className="text-xs text-cyan-600">Facility Network</p>
+            </div>
           </div>
           
           {/* Stats */}
-          <div className="grid grid-cols-4 gap-2 text-center">
-            <div className="p-2 rounded-lg bg-slate-800/50 border border-slate-700">
-              <div className="text-lg font-bold text-slate-100">{stats.total}</div>
-              <div className="text-xs text-slate-500">Total</div>
+          <div className="grid grid-cols-4 gap-2 mb-4">
+            <div className="p-2 rounded-lg bg-slate-800/50 border border-slate-700 text-center">
+              <div className="text-lg font-bold">{stats.total}</div>
+              <div className="text-[10px] text-slate-500 uppercase">Total</div>
             </div>
-            <div className="p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/30">
+            <div className="p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-center">
               <div className="text-lg font-bold text-emerald-400">{stats.online}</div>
-              <div className="text-xs text-slate-500">Online</div>
+              <div className="text-[10px] text-emerald-600 uppercase">Online</div>
             </div>
-            <div className="p-2 rounded-lg bg-red-500/10 border border-red-500/30">
+            <div className="p-2 rounded-lg bg-red-500/10 border border-red-500/30 text-center">
               <div className="text-lg font-bold text-red-400">{stats.offline}</div>
-              <div className="text-xs text-slate-500">Offline</div>
+              <div className="text-[10px] text-red-600 uppercase">Offline</div>
             </div>
-            <div className="p-2 rounded-lg bg-amber-500/10 border border-amber-500/30">
+            <div className="p-2 rounded-lg bg-amber-500/10 border border-amber-500/30 text-center">
               <div className="text-lg font-bold text-amber-400">{stats.warning}</div>
-              <div className="text-xs text-slate-500">Issues</div>
+              <div className="text-[10px] text-amber-600 uppercase">Issues</div>
             </div>
+          </div>
+
+          {/* Search */}
+          <div className="relative mb-3">
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+            <input
+              type="text"
+              placeholder="Search computers..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 bg-slate-800/50 border border-slate-700 rounded-lg text-sm placeholder:text-slate-500 focus:outline-none focus:border-cyan-500/50 transition-all"
+            />
+          </div>
+
+          {/* Filters */}
+          <div className="flex gap-1">
+            {(["all", "online", "offline", "warning"] as const).map((f) => (
+              <button
+                key={f}
+                onClick={() => setFilter(f)}
+                className={`flex-1 px-2 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                  filter === f 
+                    ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/20" 
+                    : "bg-slate-800/50 hover:bg-slate-700 text-slate-400"
+                }`}
+              >
+                {f.charAt(0).toUpperCase() + f.slice(1)}
+              </button>
+            ))}
           </div>
         </div>
 
-        {/* Filters */}
-        <div className="p-2 border-b border-slate-800 flex gap-1">
-          {(["all", "online", "offline", "warning"] as const).map((f) => (
-            <button
-              key={f}
-              onClick={() => setFilter(f)}
-              className={`flex-1 px-2 py-1.5 rounded text-xs font-medium transition-colors ${
-                filter === f 
-                  ? "bg-cyan-500 text-white" 
-                  : "bg-slate-800 hover:bg-slate-700 text-slate-300"
-              }`}
-            >
-              {f.charAt(0).toUpperCase() + f.slice(1)}
-            </button>
-          ))}
-        </div>
-
         {/* Computer List */}
-        <div className="flex-1 overflow-y-auto">
-          {filteredComputers.map((computer) => (
-            <div
-              key={computer.id}
-              onClick={() => setSelectedComputer(computer)}
-              className={`p-3 border-b border-slate-800 cursor-pointer transition-all ${
-                selectedComputer?.id === computer.id 
-                  ? "bg-cyan-500/20 border-l-2 border-l-cyan-400" 
-                  : "hover:bg-slate-800/50"
-              }`}
-            >
-              <div className="flex items-center gap-2 mb-1">
-                <span className="text-slate-400">{getTypeIcon(computer.type)}</span>
-                <span className="font-medium text-sm flex-1 truncate">{computer.name}</span>
-                {getStatusIcon(computer.status)}
-              </div>
-              <div className="flex items-center gap-2 text-xs text-slate-500">
-                <Wifi className="w-3 h-3" />
-                <span className="font-mono">{computer.ip}</span>
-                <span className="ml-auto truncate max-w-[100px]">{computer.location}</span>
-              </div>
-              {computer.status === "online" && (
-                <div className="mt-2 flex gap-1">
-                  <div className="flex-1 h-1 bg-slate-800 rounded-full overflow-hidden">
-                    <div className={`h-full ${getUsageColor(computer.cpu)}`} style={{ width: `${computer.cpu}%` }} />
-                  </div>
-                  <span className="text-[10px] text-slate-500 w-8">{Math.round(computer.cpu)}%</span>
+        <ScrollArea className="flex-1">
+          <div className="p-2 space-y-1">
+            {filteredComputers.map((computer) => (
+              <button
+                key={computer.id}
+                onClick={() => setSelectedComputer(computer)}
+                className={`w-full p-3 rounded-xl text-left transition-all ${
+                  selectedComputer?.id === computer.id 
+                    ? "bg-cyan-500/20 border border-cyan-500/40 shadow-lg shadow-cyan-500/10" 
+                    : "hover:bg-slate-800/50 border border-transparent"
+                }`}
+              >
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-slate-400">{getTypeIcon(computer.type)}</span>
+                  <span className="font-medium text-sm flex-1 truncate">{computer.name}</span>
+                  {getStatusIcon(computer.status)}
                 </div>
-              )}
-            </div>
-          ))}
-        </div>
+                <div className="flex items-center gap-2 text-xs text-slate-500">
+                  <Wifi className="w-3 h-3" />
+                  <span className="font-mono">{computer.ip}</span>
+                  <span className="ml-auto truncate max-w-[100px]">{computer.location}</span>
+                </div>
+                {computer.status === "online" && (
+                  <div className="mt-2 flex gap-1 items-center">
+                    <div className="flex-1 h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                      <div className={`h-full ${getUsageColor(computer.cpu)} transition-all duration-500`} style={{ width: `${computer.cpu}%` }} />
+                    </div>
+                    <span className="text-[10px] text-slate-500 w-8">{Math.round(computer.cpu)}%</span>
+                  </div>
+                )}
+              </button>
+            ))}
+          </div>
+        </ScrollArea>
       </div>
 
       {/* Details Panel */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col overflow-hidden">
         {selectedComputer ? (
           <>
-            <div className="p-4 border-b border-slate-800 bg-slate-900/30">
+            <div className="p-5 border-b border-cyan-500/20 bg-gradient-to-r from-cyan-500/5 to-transparent">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-xl bg-cyan-500/20 border border-cyan-500/30 flex items-center justify-center text-cyan-400">
+                <div className="flex items-center gap-4">
+                  <div className="w-14 h-14 rounded-xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400">
                     {getTypeIcon(selectedComputer.type)}
                   </div>
                   <div>
-                    <h3 className="font-bold text-lg">{selectedComputer.name}</h3>
+                    <h3 className="font-bold text-xl">{selectedComputer.name}</h3>
                     <div className="flex items-center gap-2 text-sm text-slate-400">
                       <span className="font-mono">{selectedComputer.id}</span>
                       <span>•</span>
@@ -252,10 +274,10 @@ export const ComputerManagement = () => {
                 </div>
                 <div className="flex items-center gap-3">
                   {getStatusIcon(selectedComputer.status)}
-                  <span className={`font-medium uppercase text-sm ${
-                    selectedComputer.status === "online" ? "text-emerald-400" :
-                    selectedComputer.status === "offline" ? "text-red-400" :
-                    "text-amber-400"
+                  <span className={`font-medium uppercase text-sm px-3 py-1 rounded-lg ${
+                    selectedComputer.status === "online" ? "text-emerald-400 bg-emerald-500/10" :
+                    selectedComputer.status === "offline" ? "text-red-400 bg-red-500/10" :
+                    "text-amber-400 bg-amber-500/10"
                   }`}>
                     {selectedComputer.status}
                   </span>
@@ -263,202 +285,122 @@ export const ComputerManagement = () => {
               </div>
             </div>
 
-            {/* Tabs */}
-            <div className="flex border-b border-slate-800">
-              {(["overview", "processes", "terminal"] as const).map((tab) => (
-                <button
-                  key={tab}
-                  onClick={() => setActiveTab(tab)}
-                  className={`px-6 py-3 text-sm font-medium transition-colors border-b-2 ${
-                    activeTab === tab
-                      ? "text-cyan-400 border-cyan-400 bg-cyan-500/10"
-                      : "text-slate-400 border-transparent hover:text-slate-200"
-                  }`}
-                >
-                  {tab.charAt(0).toUpperCase() + tab.slice(1)}
-                </button>
-              ))}
-            </div>
-
-            <div className="flex-1 p-4 overflow-y-auto space-y-4">
-              {activeTab === "overview" && (
-                <>
-                  {/* System Info */}
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="p-4 rounded-xl bg-slate-900/50 border border-slate-800">
-                      <div className="text-xs text-slate-500 mb-1">IP Address</div>
-                      <div className="font-mono font-bold text-cyan-400">{selectedComputer.ip}</div>
-                    </div>
-                    <div className="p-4 rounded-xl bg-slate-900/50 border border-slate-800">
-                      <div className="text-xs text-slate-500 mb-1">Operating System</div>
-                      <div className="font-bold">{selectedComputer.os}</div>
-                    </div>
-                    <div className="p-4 rounded-xl bg-slate-900/50 border border-slate-800">
-                      <div className="text-xs text-slate-500 mb-1">Type</div>
-                      <div className="font-bold capitalize">{selectedComputer.type}</div>
-                    </div>
-                    <div className="p-4 rounded-xl bg-slate-900/50 border border-slate-800">
-                      <div className="flex items-center gap-2 text-xs text-slate-500 mb-1">
-                        <Clock className="w-3 h-3" />
-                        Uptime
-                      </div>
-                      <div className="font-bold font-mono">{selectedComputer.uptime || "N/A"}</div>
-                    </div>
+            <div className="flex-1 p-5 overflow-auto">
+              <div className="max-w-3xl mx-auto space-y-5">
+                {/* System Info */}
+                <div className="grid grid-cols-4 gap-4">
+                  <div className="p-4 rounded-xl bg-slate-800/30 border border-slate-700/50">
+                    <div className="text-xs text-slate-500 uppercase mb-1">IP Address</div>
+                    <div className="font-mono font-bold text-cyan-400">{selectedComputer.ip}</div>
                   </div>
-
-                  {/* Current User */}
-                  {selectedComputer.user && (
-                    <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/30">
-                      <div className="flex items-center gap-2 mb-1">
-                        <User className="w-4 h-4 text-blue-400" />
-                        <span className="text-xs text-blue-400">Active User</span>
-                      </div>
-                      <div className="font-bold">{selectedComputer.user}</div>
+                  <div className="p-4 rounded-xl bg-slate-800/30 border border-slate-700/50">
+                    <div className="text-xs text-slate-500 uppercase mb-1">Operating System</div>
+                    <div className="font-bold text-sm">{selectedComputer.os}</div>
+                  </div>
+                  <div className="p-4 rounded-xl bg-slate-800/30 border border-slate-700/50">
+                    <div className="text-xs text-slate-500 uppercase mb-1">Type</div>
+                    <div className="font-bold capitalize">{selectedComputer.type}</div>
+                  </div>
+                  <div className="p-4 rounded-xl bg-slate-800/30 border border-slate-700/50">
+                    <div className="flex items-center gap-2 text-xs text-slate-500 uppercase mb-1">
+                      <Clock className="w-3 h-3" />
+                      Uptime
                     </div>
-                  )}
-
-                  {/* Resource Usage */}
-                  {selectedComputer.status !== "offline" && selectedComputer.status !== "maintenance" && (
-                    <div className="p-4 rounded-xl bg-slate-900/50 border border-slate-800">
-                      <div className="flex items-center gap-2 mb-4">
-                        <Activity className="w-4 h-4 text-cyan-400" />
-                        <h4 className="font-bold">Resource Usage</h4>
-                      </div>
-                      <div className="space-y-4">
-                        <div>
-                          <div className="flex justify-between text-sm mb-1">
-                            <span className="text-slate-400">CPU</span>
-                            <span className="font-mono font-bold">{Math.round(selectedComputer.cpu)}%</span>
-                          </div>
-                          <div className="h-3 bg-slate-800 rounded-full overflow-hidden">
-                            <div 
-                              className={`h-full ${getUsageColor(selectedComputer.cpu)} transition-all duration-500`}
-                              style={{ width: `${selectedComputer.cpu}%` }}
-                            />
-                          </div>
-                        </div>
-                        <div>
-                          <div className="flex justify-between text-sm mb-1">
-                            <span className="text-slate-400">Memory</span>
-                            <span className="font-mono font-bold">{Math.round(selectedComputer.memory)}%</span>
-                          </div>
-                          <div className="h-3 bg-slate-800 rounded-full overflow-hidden">
-                            <div 
-                              className={`h-full ${getUsageColor(selectedComputer.memory)} transition-all duration-500`}
-                              style={{ width: `${selectedComputer.memory}%` }}
-                            />
-                          </div>
-                        </div>
-                        <div>
-                          <div className="flex justify-between text-sm mb-1">
-                            <span className="text-slate-400">Disk</span>
-                            <span className="font-mono font-bold">{selectedComputer.disk}%</span>
-                          </div>
-                          <div className="h-3 bg-slate-800 rounded-full overflow-hidden">
-                            <div 
-                              className={`h-full ${getUsageColor(selectedComputer.disk)} transition-all duration-500`}
-                              style={{ width: `${selectedComputer.disk}%` }}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Actions */}
-                  <div className="grid grid-cols-4 gap-2">
-                    <button 
-                      onClick={openRemoteDesktop}
-                      disabled={selectedComputer.status !== "online"}
-                      className="p-3 rounded-xl bg-cyan-500/20 border border-cyan-500/30 hover:bg-cyan-500/30 transition-colors flex flex-col items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <Terminal className="w-5 h-5 text-cyan-400" />
-                      <span className="text-xs">Remote</span>
-                    </button>
-                    <button className="p-3 rounded-xl bg-emerald-500/20 border border-emerald-500/30 hover:bg-emerald-500/30 transition-colors flex flex-col items-center gap-2">
-                      <RefreshCw className="w-5 h-5 text-emerald-400" />
-                      <span className="text-xs">Restart</span>
-                    </button>
-                    <button className="p-3 rounded-xl bg-red-500/20 border border-red-500/30 hover:bg-red-500/30 transition-colors flex flex-col items-center gap-2">
-                      <Power className="w-5 h-5 text-red-400" />
-                      <span className="text-xs">Shutdown</span>
-                    </button>
-                    <button className="p-3 rounded-xl bg-slate-800 border border-slate-700 hover:bg-slate-700 transition-colors flex flex-col items-center gap-2">
-                      <Settings className="w-5 h-5 text-slate-400" />
-                      <span className="text-xs">Config</span>
-                    </button>
-                  </div>
-                </>
-              )}
-
-              {activeTab === "processes" && (
-                <div className="rounded-xl bg-slate-900/50 border border-slate-800 overflow-hidden">
-                  <table className="w-full text-sm">
-                    <thead className="bg-slate-800/50">
-                      <tr>
-                        <th className="px-4 py-2 text-left text-slate-400 font-medium">PID</th>
-                        <th className="px-4 py-2 text-left text-slate-400 font-medium">Process</th>
-                        <th className="px-4 py-2 text-right text-slate-400 font-medium">CPU</th>
-                        <th className="px-4 py-2 text-right text-slate-400 font-medium">MEM</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {[
-                        { pid: 1, name: "systemd", cpu: 0.1, mem: 0.5 },
-                        { pid: 245, name: "urbanshade-core", cpu: 12.3, mem: 8.2 },
-                        { pid: 312, name: "security-monitor", cpu: 5.4, mem: 4.1 },
-                        { pid: 456, name: "db-connector", cpu: 3.2, mem: 12.5 },
-                        { pid: 589, name: "facility-daemon", cpu: 8.7, mem: 6.3 },
-                        { pid: 702, name: "network-scanner", cpu: 2.1, mem: 3.8 },
-                        { pid: 834, name: "log-collector", cpu: 1.5, mem: 2.1 },
-                      ].map((proc) => (
-                        <tr key={proc.pid} className="border-t border-slate-800 hover:bg-slate-800/30">
-                          <td className="px-4 py-2 font-mono text-slate-500">{proc.pid}</td>
-                          <td className="px-4 py-2">{proc.name}</td>
-                          <td className="px-4 py-2 text-right font-mono">{proc.cpu}%</td>
-                          <td className="px-4 py-2 text-right font-mono">{proc.mem}%</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-
-              {activeTab === "terminal" && (
-                <div className="h-full flex flex-col rounded-xl bg-black border border-slate-800 overflow-hidden">
-                  <div className="bg-slate-900 px-4 py-2 flex items-center gap-2 border-b border-slate-800">
-                    <Terminal className="w-4 h-4 text-cyan-400" />
-                    <span className="text-sm font-mono">{selectedComputer.name} - Terminal</span>
-                  </div>
-                  <div className="flex-1 p-4 font-mono text-sm overflow-y-auto text-green-400">
-                    {terminalOutput.map((line, i) => (
-                      <div key={i} className={line.startsWith('$') ? 'text-cyan-400' : ''}>{line}</div>
-                    ))}
-                  </div>
-                  <div className="flex items-center gap-2 p-2 border-t border-slate-800 bg-slate-900/50">
-                    <span className="text-cyan-400 font-mono">$</span>
-                    <input
-                      type="text"
-                      value={terminalInput}
-                      onChange={(e) => setTerminalInput(e.target.value)}
-                      onKeyDown={(e) => e.key === 'Enter' && handleTerminalCommand()}
-                      className="flex-1 bg-transparent outline-none font-mono text-green-400"
-                      placeholder="Type a command..."
-                    />
-                    <button onClick={handleTerminalCommand} className="p-1 hover:bg-slate-800 rounded">
-                      <Send className="w-4 h-4 text-slate-500" />
-                    </button>
+                    <div className="font-bold font-mono">{selectedComputer.uptime || "N/A"}</div>
                   </div>
                 </div>
-              )}
+
+                {/* Current User */}
+                {selectedComputer.user && (
+                  <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/30">
+                    <div className="flex items-center gap-3">
+                      <User className="w-5 h-5 text-blue-400" />
+                      <div>
+                        <span className="text-xs text-blue-400 uppercase">Active User</span>
+                        <div className="font-bold">{selectedComputer.user}</div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Resource Usage */}
+                {selectedComputer.status !== "offline" && selectedComputer.status !== "maintenance" && (
+                  <div className="p-5 rounded-xl bg-slate-800/30 border border-slate-700/50">
+                    <div className="flex items-center gap-2 mb-4">
+                      <Activity className="w-5 h-5 text-cyan-400" />
+                      <h4 className="font-bold">Resource Usage</h4>
+                    </div>
+                    <div className="grid grid-cols-3 gap-6">
+                      <div>
+                        <div className="flex justify-between text-sm mb-2">
+                          <span className="text-slate-400 flex items-center gap-2"><Cpu className="w-4 h-4" /> CPU</span>
+                          <span className="font-mono font-bold">{Math.round(selectedComputer.cpu)}%</span>
+                        </div>
+                        <div className="h-3 bg-slate-800 rounded-full overflow-hidden">
+                          <div 
+                            className={`h-full ${getUsageColor(selectedComputer.cpu)} transition-all duration-500`}
+                            style={{ width: `${selectedComputer.cpu}%` }}
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <div className="flex justify-between text-sm mb-2">
+                          <span className="text-slate-400 flex items-center gap-2"><HardDrive className="w-4 h-4" /> Memory</span>
+                          <span className="font-mono font-bold">{Math.round(selectedComputer.memory)}%</span>
+                        </div>
+                        <div className="h-3 bg-slate-800 rounded-full overflow-hidden">
+                          <div 
+                            className={`h-full ${getUsageColor(selectedComputer.memory)} transition-all duration-500`}
+                            style={{ width: `${selectedComputer.memory}%` }}
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <div className="flex justify-between text-sm mb-2">
+                          <span className="text-slate-400 flex items-center gap-2"><HardDrive className="w-4 h-4" /> Disk</span>
+                          <span className="font-mono font-bold">{Math.round(selectedComputer.disk)}%</span>
+                        </div>
+                        <div className="h-3 bg-slate-800 rounded-full overflow-hidden">
+                          <div 
+                            className={`h-full ${getUsageColor(selectedComputer.disk)} transition-all duration-500`}
+                            style={{ width: `${selectedComputer.disk}%` }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Actions */}
+                <div className="flex gap-3">
+                  <button 
+                    onClick={openRemoteDesktop}
+                    disabled={selectedComputer.status !== "online"}
+                    className="flex-1 p-4 rounded-xl bg-cyan-500/10 border border-cyan-500/30 hover:bg-cyan-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+                  >
+                    <Terminal className="w-5 h-5 text-cyan-400" />
+                    <span className="font-medium">Remote Terminal</span>
+                  </button>
+                  <button className="flex-1 p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 hover:bg-amber-500/20 transition-all flex items-center justify-center gap-2">
+                    <RefreshCw className="w-5 h-5 text-amber-400" />
+                    <span className="font-medium">Restart</span>
+                  </button>
+                  <button className="flex-1 p-4 rounded-xl bg-red-500/10 border border-red-500/30 hover:bg-red-500/20 transition-all flex items-center justify-center gap-2">
+                    <Power className="w-5 h-5 text-red-400" />
+                    <span className="font-medium">Shutdown</span>
+                  </button>
+                </div>
+              </div>
             </div>
           </>
         ) : (
-          <div className="flex-1 flex items-center justify-center text-slate-500">
-            <div className="text-center">
-              <Monitor className="w-16 h-16 mx-auto mb-4 opacity-30" />
-              <p className="text-lg">Select a computer to view details</p>
-              <p className="text-sm text-slate-600 mt-1">Choose from the list on the left</p>
+          <div className="flex-1 flex items-center justify-center">
+            <div className="text-center p-8 rounded-2xl bg-slate-800/30 border border-slate-700/50">
+              <Monitor className="w-16 h-16 mx-auto mb-4 text-slate-600" />
+              <h3 className="text-lg font-bold mb-2">Select a Computer</h3>
+              <p className="text-slate-500 text-sm max-w-xs">
+                Choose a computer from the list to view details and manage remotely.
+              </p>
             </div>
           </div>
         )}
@@ -466,57 +408,49 @@ export const ComputerManagement = () => {
 
       {/* Remote Desktop Modal */}
       {remoteDesktopOpen && selectedComputer && (
-        <div className={`absolute inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center z-50 ${remoteDesktopMaximized ? 'p-0' : 'p-8'}`}>
-          <div className={`bg-slate-950 border border-slate-700 rounded-xl overflow-hidden flex flex-col shadow-2xl ${remoteDesktopMaximized ? 'w-full h-full rounded-none' : 'w-[90%] h-[85%]'}`}>
-            {/* Title Bar */}
-            <div className="bg-slate-900 px-4 py-2 flex items-center justify-between border-b border-slate-800">
-              <div className="flex items-center gap-2">
-                <Monitor className="w-4 h-4 text-cyan-400" />
-                <span className="text-sm font-medium">Remote Desktop - {selectedComputer.name}</span>
+        <div className={`absolute inset-0 bg-black/95 backdrop-blur-sm flex items-center justify-center z-50 ${remoteDesktopMaximized ? 'p-0' : 'p-8'}`}>
+          <div className={`bg-slate-950 border border-cyan-500/30 rounded-xl overflow-hidden flex flex-col shadow-2xl shadow-cyan-500/10 ${remoteDesktopMaximized ? 'w-full h-full rounded-none' : 'w-[90%] h-[85%]'}`}>
+            <div className="bg-slate-900 px-4 py-3 flex items-center justify-between border-b border-slate-800">
+              <div className="flex items-center gap-3">
+                <Terminal className="w-5 h-5 text-cyan-400" />
+                <span className="font-medium">Remote Terminal - {selectedComputer.name}</span>
                 <span className="text-xs text-slate-500 font-mono">({selectedComputer.ip})</span>
               </div>
               <div className="flex items-center gap-1">
                 <button 
                   onClick={() => setRemoteDesktopMaximized(!remoteDesktopMaximized)}
-                  className="p-1.5 hover:bg-slate-800 rounded transition-colors"
+                  className="p-2 hover:bg-slate-800 rounded-lg transition-colors"
                 >
                   {remoteDesktopMaximized ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
                 </button>
                 <button 
                   onClick={() => { setRemoteDesktopOpen(false); setTerminalOutput([]); }}
-                  className="p-1.5 hover:bg-red-500/20 hover:text-red-400 rounded transition-colors"
+                  className="p-2 hover:bg-red-500/20 hover:text-red-400 rounded-lg transition-colors"
                 >
                   <X className="w-4 h-4" />
                 </button>
               </div>
             </div>
-            
-            {/* Remote Terminal */}
-            <div className="flex-1 bg-black p-4 font-mono text-sm overflow-y-auto">
-              <div className="text-green-400">
-                {terminalOutput.map((line, i) => (
-                  <div key={i} className={`${line.startsWith('$') ? 'text-cyan-400' : ''} leading-relaxed`}>{line}</div>
-                ))}
-              </div>
+            <div className="flex-1 bg-black p-4 font-mono text-sm text-green-400 overflow-auto">
+              {terminalOutput.map((line, i) => (
+                <div key={i} className="whitespace-pre-wrap">{line}</div>
+              ))}
             </div>
-            
-            {/* Input */}
-            <div className="flex items-center gap-2 p-3 border-t border-slate-800 bg-slate-900/50">
-              <span className="text-cyan-400 font-mono text-sm">$</span>
+            <div className="bg-slate-900 px-4 py-3 flex items-center gap-2 border-t border-slate-800">
+              <span className="text-cyan-400">$</span>
               <input
                 type="text"
                 value={terminalInput}
                 onChange={(e) => setTerminalInput(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleTerminalCommand()}
-                className="flex-1 bg-transparent outline-none font-mono text-sm text-green-400"
-                placeholder="Type a command..."
+                onKeyDown={(e) => e.key === "Enter" && handleTerminalCommand()}
+                className="flex-1 bg-transparent outline-none text-green-400 font-mono"
                 autoFocus
               />
               <button 
                 onClick={handleTerminalCommand}
-                className="px-3 py-1 bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/30 rounded text-cyan-400 text-sm transition-colors"
+                className="p-2 hover:bg-slate-800 rounded-lg transition-colors text-cyan-400"
               >
-                Send
+                <Send className="w-4 h-4" />
               </button>
             </div>
           </div>
