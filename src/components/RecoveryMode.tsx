@@ -371,13 +371,8 @@ export const RecoveryMode = ({ onExit }: RecoveryModeProps) => {
   };
 
   const handleEnterDevMode = () => {
-    setDevLogs([
-      { type: "info", message: "Developer Mode initialized", time: new Date().toLocaleTimeString() },
-      { type: "info", message: "System diagnostics starting...", time: new Date().toLocaleTimeString() },
-      { type: "success", message: "LocalStorage status: OK", time: new Date().toLocaleTimeString() },
-      { type: "info", message: `Found ${localStorage.length} stored entries`, time: new Date().toLocaleTimeString() },
-    ]);
-    setView("dev-mode");
+    // Redirect to the full dev mode page
+    window.location.href = "/dev-dev";
   };
 
   const renderMenu = () => (

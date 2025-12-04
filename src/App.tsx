@@ -12,6 +12,7 @@ import AdminPanelDocs from "./pages/docs/AdminPanel";
 import Advanced from "./pages/docs/Advanced";
 import Shortcuts from "./pages/docs/Shortcuts";
 import Troubleshooting from "./pages/docs/Troubleshooting";
+import DevDev from "./pages/DevDev";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -28,6 +29,7 @@ const App = () => (
     >
       <Routes>
         <Route path="/" element={<Index />} />
+        <Route path="/dev-dev" element={<DevDev />} />
         <Route path="/docs" element={<Docs />} />
         <Route path="/docs/getting-started" element={<GettingStarted />} />
         <Route path="/docs/applications" element={<Applications />} />

@@ -108,10 +108,10 @@ export const InstallerWizard = ({ onComplete }: InstallerWizardProps) => {
 
   const getInstallSpeed = () => {
     switch (installType) {
-      case "minimal": return 180;
-      case "standard": return 140;
-      case "full": return 100;
-      default: return 150;
+      case "minimal": return 280;
+      case "standard": return 220;
+      case "full": return 160;
+      default: return 220;
     }
   };
 
@@ -122,29 +122,44 @@ export const InstallerWizard = ({ onComplete }: InstallerWizardProps) => {
       { action: "EXTRACT", file: "kernel\\pressure_mgmt.sys" },
       { action: "EXTRACT", file: "kernel\\thermal_core.sys" },
       { action: "EXTRACT", file: "kernel\\bios_interface.dll" },
+      { action: "EXTRACT", file: "kernel\\memory_pool.sys" },
+      { action: "EXTRACT", file: "kernel\\io_manager.dll" },
+      { action: "EXTRACT", file: "kernel\\scheduler.sys" },
       { action: "INSTALL", file: "system32\\stndt_ui.dll" },
       { action: "INSTALL", file: "system32\\containment.dll" },
       { action: "INSTALL", file: "system32\\shell32.dll" },
       { action: "INSTALL", file: "system32\\gdi_render.dll" },
       { action: "INSTALL", file: "system32\\user32.dll" },
       { action: "INSTALL", file: "system32\\kernel32.dll" },
+      { action: "INSTALL", file: "system32\\ntdll.dll" },
+      { action: "INSTALL", file: "system32\\advapi32.dll" },
+      { action: "INSTALL", file: "system32\\secur32.dll" },
       { action: "CONFIG", file: "system32\\config\\FACILITY" },
       { action: "CONFIG", file: "system32\\config\\SECURITY" },
       { action: "CONFIG", file: "system32\\config\\SYSTEM" },
       { action: "CONFIG", file: "system32\\config\\SOFTWARE" },
+      { action: "CONFIG", file: "system32\\config\\DEFAULT" },
+      { action: "CONFIG", file: "system32\\config\\SAM" },
       { action: "INSTALL", file: "drivers\\depth_sensor.sys" },
       { action: "INSTALL", file: "drivers\\pressure_valve.sys" },
       { action: "INSTALL", file: "drivers\\sonar_array.sys" },
       { action: "INSTALL", file: "drivers\\hull_monitor.sys" },
       { action: "INSTALL", file: "drivers\\oxygen_ctrl.sys" },
       { action: "INSTALL", file: "drivers\\display_deep.sys" },
+      { action: "INSTALL", file: "drivers\\usb_hub.sys" },
+      { action: "INSTALL", file: "drivers\\storage_ctrl.sys" },
+      { action: "INSTALL", file: "drivers\\network_adapter.sys" },
       { action: "COPY", file: "fonts\\urbanshade_mono.ttf" },
       { action: "COPY", file: "fonts\\urbanshade_sans.ttf" },
       { action: "COPY", file: "fonts\\terminal_glyph.ttf" },
+      { action: "COPY", file: "fonts\\segoe_ui.ttf" },
       { action: "REGISTER", file: "system32\\oleaut32.dll" },
       { action: "REGISTER", file: "system32\\msvcrt.dll" },
+      { action: "REGISTER", file: "system32\\comctl32.dll" },
       { action: "VERIFY", file: "boot\\bootmgr.efi" },
       { action: "VERIFY", file: "boot\\ntldr" },
+      { action: "VERIFY", file: "boot\\bcd" },
+      { action: "VERIFY", file: "boot\\winload.exe" },
     ];
     
     const standardFiles = [
@@ -158,23 +173,36 @@ export const InstallerWizard = ({ onComplete }: InstallerWizardProps) => {
       { action: "INSTALL", file: "apps\\calculator.exe" },
       { action: "INSTALL", file: "apps\\settings.exe" },
       { action: "INSTALL", file: "apps\\browser.exe" },
+      { action: "INSTALL", file: "apps\\system_monitor.exe" },
+      { action: "INSTALL", file: "apps\\action_logger.exe" },
+      { action: "INSTALL", file: "apps\\network_scanner.exe" },
+      { action: "INSTALL", file: "apps\\messages.exe" },
       { action: "CONFIG", file: "modules\\auth_biometric.dll" },
       { action: "CONFIG", file: "modules\\network_secure.dll" },
       { action: "CONFIG", file: "modules\\crypto_engine.dll" },
       { action: "CONFIG", file: "modules\\firewall.dll" },
+      { action: "CONFIG", file: "modules\\access_ctrl.dll" },
+      { action: "CONFIG", file: "modules\\audit_log.dll" },
       { action: "INIT", file: "data\\personnel.udb" },
       { action: "INIT", file: "data\\containment.udb" },
       { action: "INIT", file: "data\\facility_zones.udb" },
       { action: "INIT", file: "data\\system_logs.udb" },
       { action: "INIT", file: "data\\access_control.udb" },
+      { action: "INIT", file: "data\\user_profiles.udb" },
+      { action: "INIT", file: "data\\permissions.udb" },
       { action: "VERIFY", file: "security\\certificates.pem" },
       { action: "VERIFY", file: "security\\clearance_levels.cfg" },
       { action: "VERIFY", file: "security\\encryption_keys.bin" },
+      { action: "VERIFY", file: "security\\root_ca.crt" },
       { action: "COPY", file: "assets\\themes\\default.theme" },
       { action: "COPY", file: "assets\\themes\\dark_abyss.theme" },
+      { action: "COPY", file: "assets\\themes\\deep_cyan.theme" },
       { action: "COPY", file: "assets\\icons\\system.ico" },
       { action: "COPY", file: "assets\\icons\\apps.ico" },
+      { action: "COPY", file: "assets\\icons\\files.ico" },
       { action: "REGISTER", file: "modules\\com_services.dll" },
+      { action: "REGISTER", file: "modules\\dcom_runtime.dll" },
+      { action: "FINALIZE", file: "system32\\std_setup.flag" },
     ];
     
     const fullFiles = [
@@ -188,35 +216,49 @@ export const InstallerWizard = ({ onComplete }: InstallerWizardProps) => {
       { action: "INSTALL", file: "apps\\incident_reports.exe" },
       { action: "INSTALL", file: "apps\\audio_logs.exe" },
       { action: "INSTALL", file: "apps\\video_player.exe" },
-      { action: "INSTALL", file: "apps\\network_scanner.exe" },
       { action: "INSTALL", file: "apps\\disk_manager.exe" },
       { action: "INSTALL", file: "apps\\registry_editor.exe" },
       { action: "INSTALL", file: "apps\\vpn_client.exe" },
+      { action: "INSTALL", file: "apps\\computer_mgmt.exe" },
+      { action: "INSTALL", file: "apps\\facility_planner.exe" },
+      { action: "INSTALL", file: "apps\\img_editor.exe" },
       { action: "CONFIG", file: "modules\\specimen_bio.dll" },
       { action: "CONFIG", file: "modules\\lockdown_proto.dll" },
       { action: "CONFIG", file: "modules\\alert_system.dll" },
       { action: "CONFIG", file: "modules\\backup_service.dll" },
       { action: "CONFIG", file: "modules\\recovery_tools.dll" },
+      { action: "CONFIG", file: "modules\\deep_scan.dll" },
+      { action: "CONFIG", file: "modules\\remote_access.dll" },
       { action: "INIT", file: "data\\specimens.udb" },
       { action: "INIT", file: "data\\research_logs.udb" },
       { action: "INIT", file: "data\\incident_reports.udb" },
       { action: "INIT", file: "data\\audio_archives.udb" },
       { action: "INIT", file: "data\\video_archives.udb" },
       { action: "INIT", file: "data\\experiment_results.udb" },
+      { action: "INIT", file: "data\\sensor_readings.udb" },
+      { action: "INIT", file: "data\\equipment_status.udb" },
       { action: "COPY", file: "assets\\maps\\facility_full.fmap" },
       { action: "COPY", file: "assets\\maps\\sector_alpha.fmap" },
       { action: "COPY", file: "assets\\maps\\containment_wing.fmap" },
+      { action: "COPY", file: "assets\\maps\\research_labs.fmap" },
+      { action: "COPY", file: "assets\\maps\\emergency_routes.fmap" },
       { action: "COPY", file: "assets\\sounds\\alerts.wav" },
       { action: "COPY", file: "assets\\sounds\\lockdown.wav" },
       { action: "COPY", file: "assets\\sounds\\breach_alarm.wav" },
       { action: "COPY", file: "assets\\sounds\\notification.wav" },
+      { action: "COPY", file: "assets\\sounds\\startup.wav" },
+      { action: "COPY", file: "assets\\sounds\\shutdown.wav" },
       { action: "VERIFY", file: "protocols\\containment_breach.xml" },
       { action: "VERIFY", file: "protocols\\evacuation.xml" },
       { action: "VERIFY", file: "protocols\\lockdown_alpha.xml" },
       { action: "VERIFY", file: "protocols\\emergency_power.xml" },
       { action: "VERIFY", file: "protocols\\biohazard.xml" },
+      { action: "VERIFY", file: "protocols\\radiation_leak.xml" },
+      { action: "VERIFY", file: "protocols\\flood_control.xml" },
       { action: "REGISTER", file: "modules\\advanced_crypto.dll" },
       { action: "REGISTER", file: "modules\\ml_detection.dll" },
+      { action: "REGISTER", file: "modules\\quantum_secure.dll" },
+      { action: "FINALIZE", file: "system32\\full_setup.flag" },
       { action: "FINALIZE", file: "system32\\setup_complete.flag" },
     ];
     
@@ -595,8 +637,7 @@ const WelcomeScreen = ({ onNext, onSkip }: { onNext: () => void; onSkip?: () => 
         </div>
       </div>
       
-      <div className="flex justify-between pt-4 border-t border-cyan-500/20">
-        <UrbanButton variant="ghost" onClick={() => setShowSkipDialog(true)}>Skip Installation</UrbanButton>
+      <div className="flex justify-end pt-4 border-t border-cyan-500/20">
         <UrbanButton onClick={onNext}>Begin Installation →</UrbanButton>
       </div>
     </div>
@@ -690,10 +731,10 @@ const DirectoryScreen = ({ installDir, setInstallDir, onBack, onNext }: {
       <div className="bg-slate-800/50 border border-cyan-500/20 rounded-lg p-3 h-48 overflow-y-auto">
         <div className="text-xs space-y-1 font-mono">
           {[
-            { icon: HardDrive, name: "C:\\ (System)", indent: 0 },
-            { icon: Folder, name: "Program Files", indent: 1 },
+            { icon: HardDrive, name: "Unallocated Drive (0:)", indent: 0 },
+            { icon: Folder, name: "System", indent: 1 },
             { icon: Folder, name: "URBANSHADE", indent: 1, active: true },
-            { icon: Folder, name: "Windows", indent: 1 },
+            { icon: Folder, name: "Recovery", indent: 1 },
             { icon: Folder, name: "Users", indent: 1 },
           ].map((item, i) => (
             <div 
