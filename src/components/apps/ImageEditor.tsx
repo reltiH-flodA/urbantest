@@ -213,13 +213,24 @@ export const ImageEditor = () => {
       {!imageData ? (
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center space-y-6 p-8">
-            <FileImage className="w-20 h-20 mx-auto text-muted-foreground/30" />
+            <FileImage className="w-20 h-20 mx-auto text-primary/30" />
             <div>
               <h2 className="text-xl font-semibold mb-2">No Image Loaded</h2>
               <p className="text-muted-foreground text-sm max-w-md">
                 Import an existing .img file, create a snapshot from your current system, 
                 or select a saved recovery image below.
               </p>
+            </div>
+
+            <div className="flex gap-3 justify-center">
+              <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
+                <Upload className="w-4 h-4 mr-2" />
+                Import File
+              </Button>
+              <Button variant="default" onClick={handleCreateNew}>
+                <Database className="w-4 h-4 mr-2" />
+                Snapshot Current System
+              </Button>
             </div>
 
             {savedImages.length > 0 && (
