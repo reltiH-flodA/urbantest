@@ -43,7 +43,7 @@ Please follow these guidelines before using or redistributing any part of this p
 • 	Attribution: Do not claim the project (or major parts of it) as your own. Include a visible attribution line in your fork or derivative work. Example:
 
 
-• 	"Based on Urbanshade by aswdBatch — https://github.com/aswdBatch/urbanshade-7e993958"
+`"Based on Urbanshade by aswdBatch — https://github.com/aswdBatch/urbanshade-OS"`
 
 
 • 	Redistribution: Do not redistribute the project verbatim as your own project. If you redistribute, clearly state what you changed and keep a link back to the original repository.
