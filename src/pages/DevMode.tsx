@@ -1396,9 +1396,8 @@ const DevMode = () => {
                       if (confirm('DANGER: This will clear ALL localStorage and reset the entire system. Continue?')) {
                         if (confirm('Are you ABSOLUTELY sure? This cannot be undone!')) {
                           actionDispatcher.system('Admin triggered full system wipe');
-                          localStorage.clear();
-                          toast.success('System wiped. Reloading...');
-                          setTimeout(() => window.location.href = '/', 1000);
+                          commandQueue.queueWipe();
+                          toast.success('System wipe queued. Return to OS to execute.');
                         }
                       }
                     }}

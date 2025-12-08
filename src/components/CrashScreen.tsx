@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { AlertTriangle, RefreshCw, Skull, Zap, Activity, Cpu, HardDrive, Wifi, WifiOff, Shield, Clock, Terminal } from "lucide-react";
+import { RefreshCw } from "lucide-react";
 
 export type CrashType = 
   | "KERNEL_PANIC" 
@@ -36,139 +36,105 @@ interface CrashScreenProps {
   customData?: { title: string; message: string } | null;
 }
 
-// STYLED crash screen themes - these are for testing/simulation, NOT real errors
+// UrbanShade themed crash screen - clean, minimal, professional
 const CRASH_THEMES: Record<CrashType, { 
-  color: string; 
-  bgGradient: string;
-  icon: React.ReactNode;
+  accentColor: string;
   emoticon: string;
   title: string;
   subtitle: string;
 }> = {
   KERNEL_PANIC: {
-    color: "text-blue-400",
-    bgGradient: "from-blue-950 via-blue-900/90 to-slate-950",
-    icon: <Skull className="w-16 h-16" />,
+    accentColor: "#00d4ff",
     emoticon: ":(",
-    title: "Your system ran into a problem",
-    subtitle: "We're collecting some info, and then we'll restart for you."
+    title: "System ran into a problem",
+    subtitle: "We're collecting diagnostic data and will restart shortly."
   },
   CRITICAL_PROCESS_DIED: {
-    color: "text-blue-400",
-    bgGradient: "from-blue-950 via-blue-900/90 to-slate-950",
-    icon: <AlertTriangle className="w-16 h-16" />,
+    accentColor: "#00d4ff",
     emoticon: ":(",
     title: "A critical process has stopped",
     subtitle: "The system cannot continue without this process."
   },
   SYSTEM_SERVICE_EXCEPTION: {
-    color: "text-cyan-400",
-    bgGradient: "from-cyan-950 via-cyan-900/90 to-slate-950",
-    icon: <Zap className="w-16 h-16" />,
+    accentColor: "#00d4ff",
     emoticon: ":/",
     title: "System service exception",
     subtitle: "A system service encountered an unexpected error."
   },
   MEMORY_MANAGEMENT: {
-    color: "text-purple-400",
-    bgGradient: "from-purple-950 via-purple-900/90 to-slate-950",
-    icon: <Cpu className="w-16 h-16" />,
+    accentColor: "#00d4ff",
     emoticon: ":0",
     title: "Memory management error",
     subtitle: "The system detected a memory allocation failure."
   },
   IRQL_NOT_LESS_OR_EQUAL: {
-    color: "text-amber-400",
-    bgGradient: "from-amber-950 via-amber-900/90 to-slate-950",
-    icon: <Activity className="w-16 h-16" />,
+    accentColor: "#00d4ff",
     emoticon: ":|",
     title: "IRQL violation detected",
     subtitle: "A process accessed memory at an invalid level."
   },
   PAGE_FAULT_IN_NONPAGED_AREA: {
-    color: "text-orange-400",
-    bgGradient: "from-orange-950 via-orange-900/90 to-slate-950",
-    icon: <HardDrive className="w-16 h-16" />,
+    accentColor: "#00d4ff",
     emoticon: ":X",
     title: "Page fault in nonpaged area",
     subtitle: "Invalid memory was referenced."
   },
   DRIVER_IRQL_NOT_LESS_OR_EQUAL: {
-    color: "text-yellow-400",
-    bgGradient: "from-yellow-950 via-yellow-900/90 to-slate-950",
-    icon: <Wifi className="w-16 h-16" />,
+    accentColor: "#00d4ff",
     emoticon: ":\\",
     title: "Driver IRQL violation",
     subtitle: "A driver accessed memory incorrectly."
   },
   SYSTEM_THREAD_EXCEPTION_NOT_HANDLED: {
-    color: "text-red-400",
-    bgGradient: "from-red-950 via-red-900/90 to-slate-950",
-    icon: <WifiOff className="w-16 h-16" />,
+    accentColor: "#00d4ff",
     emoticon: ":#",
     title: "Thread exception not handled",
     subtitle: "A system thread generated an unhandled exception."
   },
   UNEXPECTED_KERNEL_MODE_TRAP: {
-    color: "text-pink-400",
-    bgGradient: "from-pink-950 via-pink-900/90 to-slate-950",
-    icon: <Shield className="w-16 h-16" />,
+    accentColor: "#00d4ff",
     emoticon: ":?",
     title: "Unexpected kernel trap",
     subtitle: "The kernel encountered an unexpected trap."
   },
   KMODE_EXCEPTION_NOT_HANDLED: {
-    color: "text-rose-400",
-    bgGradient: "from-rose-950 via-rose-900/90 to-slate-950",
-    icon: <AlertTriangle className="w-16 h-16" />,
+    accentColor: "#00d4ff",
     emoticon: ":!",
     title: "Kernel exception not handled",
     subtitle: "A kernel mode exception was not caught."
   },
   INACCESSIBLE_BOOT_DEVICE: {
-    color: "text-slate-400",
-    bgGradient: "from-slate-900 via-slate-800 to-slate-950",
-    icon: <HardDrive className="w-16 h-16" />,
+    accentColor: "#00d4ff",
     emoticon: ":'(",
     title: "Boot device inaccessible",
     subtitle: "The system cannot access the boot device."
   },
   VIDEO_TDR_FAILURE: {
-    color: "text-green-400",
-    bgGradient: "from-green-950 via-green-900/90 to-slate-950",
-    icon: <Activity className="w-16 h-16" />,
+    accentColor: "#00d4ff",
     emoticon: ":v",
     title: "Display driver timeout",
     subtitle: "The display driver failed to respond in time."
   },
   WHEA_UNCORRECTABLE_ERROR: {
-    color: "text-red-500",
-    bgGradient: "from-red-950 via-red-900 to-slate-950",
-    icon: <Zap className="w-16 h-16" />,
+    accentColor: "#00d4ff",
     emoticon: ":(",
     title: "Hardware error detected",
     subtitle: "A fatal hardware error has occurred."
   },
   DPC_WATCHDOG_VIOLATION: {
-    color: "text-indigo-400",
-    bgGradient: "from-indigo-950 via-indigo-900/90 to-slate-950",
-    icon: <Clock className="w-16 h-16" />,
+    accentColor: "#00d4ff",
     emoticon: ":@",
     title: "DPC watchdog violation",
     subtitle: "A deferred procedure call exceeded timeout."
   },
   CLOCK_WATCHDOG_TIMEOUT: {
-    color: "text-teal-400",
-    bgGradient: "from-teal-950 via-teal-900/90 to-slate-950",
-    icon: <Clock className="w-16 h-16" />,
+    accentColor: "#00d4ff",
     emoticon: ":>",
     title: "Clock watchdog timeout",
     subtitle: "Processor clock interrupt was not received."
   },
   custom: {
-    color: "text-blue-400",
-    bgGradient: "from-blue-950 via-blue-900/90 to-slate-950",
-    icon: <AlertTriangle className="w-16 h-16" />,
+    accentColor: "#00d4ff",
     emoticon: ":(",
     title: "System error",
     subtitle: "The system encountered an error."
@@ -256,16 +222,19 @@ export const CrashScreen = ({
 
   return (
     <div 
-      className={`fixed inset-0 bg-gradient-to-br ${theme.bgGradient} text-white font-sans overflow-hidden flex flex-col`}
+      className="fixed inset-0 bg-[#0a0e14] text-white font-sans overflow-hidden flex flex-col"
       style={crashType === "virus" ? {
         filter: `hue-rotate(${glitchIntensity * 30}deg)`,
         transform: `translate(${(glitchIntensity - 0.5) * 4}px, ${(glitchIntensity - 0.5) * 2}px)`
       } : undefined}
     >
+      {/* Subtle gradient overlay */}
+      <div className="absolute inset-0 bg-gradient-to-br from-cyan-950/20 via-transparent to-slate-950/40 pointer-events-none" />
+      
       {/* Scan lines overlay */}
       <div className="absolute inset-0 pointer-events-none opacity-[0.02]" 
         style={{ 
-          backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,255,255,0.1) 2px, rgba(255,255,255,0.1) 4px)' 
+          backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,212,255,0.05) 2px, rgba(0,212,255,0.05) 4px)' 
         }} 
       />
 
@@ -273,7 +242,10 @@ export const CrashScreen = ({
       <div className="flex-1 flex items-center justify-center p-8">
         <div className="max-w-3xl w-full space-y-8">
           {/* Emoticon */}
-          <div className={`text-[120px] md:text-[180px] font-light ${theme.color} leading-none`}>
+          <div 
+            className="text-[120px] md:text-[180px] font-light leading-none"
+            style={{ color: theme.accentColor }}
+          >
             {theme.emoticon}
           </div>
 
@@ -282,20 +254,20 @@ export const CrashScreen = ({
             <h1 className="text-2xl md:text-3xl font-light text-white leading-relaxed">
               {customData?.title || theme.title}
             </h1>
-            <p className="text-lg text-white/70">
+            <p className="text-lg text-white/60">
               {customData?.message || theme.subtitle}
             </p>
           </div>
 
           {/* Progress */}
           <div className="space-y-3 max-w-lg">
-            <p className="text-sm text-white/60">
+            <p className="text-sm text-white/50">
               {phase === "collecting" ? `${displayProgress}% complete` : "Ready to restart"}
             </p>
             <div className="h-1 bg-white/10 rounded-full overflow-hidden">
               <div 
-                className={`h-full ${theme.color.replace('text-', 'bg-')} transition-all duration-100 ease-out`}
-                style={{ width: `${displayProgress}%` }}
+                className="h-full transition-all duration-100 ease-out"
+                style={{ width: `${displayProgress}%`, backgroundColor: theme.accentColor }}
               />
             </div>
           </div>
@@ -311,55 +283,47 @@ export const CrashScreen = ({
                   ))}
                 </div>
               </div>
-              <div className="text-xs text-white/50 max-w-xs">
+              <div className="text-xs text-white/40 max-w-xs">
                 <p className="mb-2">For more information about this issue and possible fixes, visit:</p>
-                <p className={`font-mono ${theme.color}`}>urbanshade.os/support</p>
+                <p className="font-mono" style={{ color: theme.accentColor }}>urbanshade.os/support</p>
               </div>
             </div>
 
             {/* Technical info */}
-            <div className="space-y-2 text-xs text-white/40">
-              <p>Stop code: <span className={`font-mono ${theme.color}`}>{resolvedCrashData.stopCode}</span></p>
+            <div className="space-y-2 text-xs text-white/30">
+              <p>Stop code: <span className="font-mono" style={{ color: theme.accentColor }}>{resolvedCrashData.stopCode}</span></p>
               {resolvedCrashData.process && (
-                <p>What failed: <span className="font-mono text-white/60">{resolvedCrashData.process}</span></p>
+                <p>What failed: <span className="font-mono text-white/50">{resolvedCrashData.process}</span></p>
               )}
               {resolvedCrashData.module && (
-                <p>Module: <span className="font-mono text-white/60">{resolvedCrashData.module}</span></p>
+                <p>Module: <span className="font-mono text-white/50">{resolvedCrashData.module}</span></p>
               )}
             </div>
           </div>
 
-          {/* Notice - This is styled/simulated */}
-          <div className="pt-6 border-t border-white/10">
-            <div className="flex items-start gap-3 p-4 bg-white/5 rounded-lg border border-white/10">
-              <Terminal className={`w-5 h-5 ${theme.color} flex-shrink-0 mt-0.5`} />
-              <div className="text-sm text-white/60">
-                <p className="font-medium text-white/80 mb-1">Styled Crash Screen</p>
-                <p className="text-xs">
-                  This is a <strong>styled crash screen</strong> for testing or demonstration. 
-                  It simulates a system crash but is not caused by an actual error. 
-                  If this was triggered from DEF-DEV, it's working as expected.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Restart button */}
+          {/* Restart button - Only option */}
           {phase === "ready" && (
             <button
               onClick={onReboot}
-              className={`flex items-center gap-3 px-6 py-3 bg-white/10 hover:bg-white/20 rounded-lg transition-colors border border-white/20`}
+              className="flex items-center gap-3 px-8 py-4 rounded-lg transition-all font-medium"
+              style={{ 
+                backgroundColor: `${theme.accentColor}20`,
+                borderColor: `${theme.accentColor}40`,
+                borderWidth: '1px',
+                color: theme.accentColor
+              }}
             >
               <RefreshCw className="w-5 h-5" />
-              <span>Restart System</span>
+              <span>Reboot Now</span>
             </button>
           )}
         </div>
       </div>
 
-      {/* Footer timestamp */}
-      <div className="p-4 text-xs text-white/30 text-center">
-        {new Date().toLocaleString()} | Build: US-2.3.0-{Date.now().toString(36).slice(-4).toUpperCase()}
+      {/* Footer */}
+      <div className="p-4 flex items-center justify-between text-xs text-white/20">
+        <span>UrbanShade OS</span>
+        <span>{new Date().toLocaleString()} | Build: US-2.5.0-{Date.now().toString(36).slice(-4).toUpperCase()}</span>
       </div>
     </div>
   );

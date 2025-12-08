@@ -1,5 +1,5 @@
 // UUR Repository Management
-// Handles package registry, submissions, and real apps
+// Handles package registry, submissions, real apps, and package lists
 
 export interface UURPackage {
   id: string;
@@ -12,6 +12,7 @@ export interface UURPackage {
   stars: number;
   githubUrl?: string;
   isOfficial: boolean;
+  listSource?: string;
   component?: () => React.ReactNode;
 }
 
@@ -24,8 +25,19 @@ export interface UURSubmission {
   status: 'pending' | 'approved' | 'denied';
 }
 
+export interface UURList {
+  id: string;
+  name: string;
+  url: string;
+  description: string;
+  isOfficial: boolean;
+  addedAt: string;
+  packages: UURPackage[];
+}
+
 const UUR_SUBMISSIONS_KEY = 'urbanshade_uur_submissions';
 const UUR_INSTALLED_APPS_KEY = 'urbanshade_uur_installed_apps';
+const UUR_CUSTOM_LISTS_KEY = 'urbanshade_uur_custom_lists';
 
 // === REAL BUILT-IN UUR APPS ===
 
@@ -115,7 +127,8 @@ export const UUR_REAL_PACKAGES: Record<string, UURPackage> = {
     category: 'app',
     downloads: 5420,
     stars: 128,
-    isOfficial: true
+    isOfficial: true,
+    listSource: 'official'
   },
   'system-info': {
     id: 'system-info',
@@ -126,20 +139,176 @@ export const UUR_REAL_PACKAGES: Record<string, UURPackage> = {
     category: 'utility',
     downloads: 3850,
     stars: 89,
-    isOfficial: true
+    isOfficial: true,
+    listSource: 'official'
   }
 };
 
-// Get app HTML by ID
+// Sanitize HTML to prevent XSS - only allow safe tags and attributes
+export const sanitizeHtml = (html: string): string => {
+  // Create a DOM parser
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html, 'text/html');
+  
+  // Allowed tags
+  const allowedTags = ['div', 'span', 'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'pre', 'code', 'ul', 'ol', 'li', 'br', 'hr', 'strong', 'em', 'b', 'i'];
+  
+  // Allowed attributes
+  const allowedAttrs = ['style', 'class'];
+  
+  // Disallowed style patterns (scripts, expressions)
+  const dangerousStylePatterns = [
+    /javascript:/gi,
+    /expression\s*\(/gi,
+    /behavior:/gi,
+    /-moz-binding/gi,
+    /url\s*\([^)]*script/gi,
+  ];
+  
+  const sanitizeNode = (node: Node): void => {
+    if (node.nodeType === Node.ELEMENT_NODE) {
+      const el = node as Element;
+      const tagName = el.tagName.toLowerCase();
+      
+      // Check if tag is allowed
+      if (!allowedTags.includes(tagName)) {
+        // Replace with span but keep content
+        const span = doc.createElement('span');
+        while (el.firstChild) {
+          span.appendChild(el.firstChild);
+        }
+        el.parentNode?.replaceChild(span, el);
+        return;
+      }
+      
+      // Remove disallowed attributes
+      const attrs = Array.from(el.attributes);
+      for (const attr of attrs) {
+        if (!allowedAttrs.includes(attr.name.toLowerCase())) {
+          el.removeAttribute(attr.name);
+        } else if (attr.name.toLowerCase() === 'style') {
+          // Check for dangerous patterns in style
+          let style = attr.value;
+          for (const pattern of dangerousStylePatterns) {
+            style = style.replace(pattern, '');
+          }
+          el.setAttribute('style', style);
+        }
+      }
+      
+      // Recursively sanitize children
+      Array.from(el.childNodes).forEach(sanitizeNode);
+    }
+  };
+  
+  sanitizeNode(doc.body);
+  return doc.body.innerHTML;
+};
+
+// Get app HTML by ID (sanitized)
 export const getUURAppHtml = (appId: string): string | null => {
+  let html: string | null = null;
+  
   switch (appId) {
     case 'hello-world':
-      return HelloWorldApp();
+      html = HelloWorldApp();
+      break;
     case 'system-info':
-      return SystemInfoApp();
+      html = SystemInfoApp();
+      break;
     default:
-      return null;
+      // Check custom lists for the app
+      const customLists = getCustomLists();
+      for (const list of customLists) {
+        const pkg = list.packages.find(p => p.id === appId);
+        if (pkg) {
+          html = `<div style="padding: 20px; background: #1a1a2e; color: white; font-family: monospace;">
+            <h2 style="color: #00d4ff;">${pkg.name}</h2>
+            <p style="color: #888; margin: 8px 0;">${pkg.description}</p>
+            <div style="background: #0a0a0a; padding: 12px; border-radius: 6px; margin-top: 16px;">
+              <p style="color: #666; font-size: 12px;">This package was loaded from a custom list.</p>
+              <p style="color: #444; font-size: 11px;">Source: ${list.name}</p>
+            </div>
+          </div>`;
+          break;
+        }
+      }
+      break;
   }
+  
+  // Sanitize before returning
+  return html ? sanitizeHtml(html) : null;
+};
+
+// === PACKAGE LISTS ===
+
+// Get the official package list
+export const getOfficialList = (): UURList => ({
+  id: 'official',
+  name: 'Official Repository',
+  url: 'uur://official',
+  description: 'The official UrbanShade User Repository with verified packages',
+  isOfficial: true,
+  addedAt: new Date().toISOString(),
+  packages: Object.values(UUR_REAL_PACKAGES)
+});
+
+// Get custom (imported) lists
+export const getCustomLists = (): UURList[] => {
+  try {
+    const stored = localStorage.getItem(UUR_CUSTOM_LISTS_KEY);
+    return stored ? JSON.parse(stored) : [];
+  } catch {
+    return [];
+  }
+};
+
+// Add a custom list
+export const addCustomList = (list: Omit<UURList, 'addedAt' | 'isOfficial'>): boolean => {
+  try {
+    const lists = getCustomLists();
+    
+    // Check for duplicate ID
+    if (lists.some(l => l.id === list.id)) {
+      return false;
+    }
+    
+    const newList: UURList = {
+      ...list,
+      isOfficial: false,
+      addedAt: new Date().toISOString()
+    };
+    
+    lists.push(newList);
+    localStorage.setItem(UUR_CUSTOM_LISTS_KEY, JSON.stringify(lists));
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+// Remove a custom list
+export const removeCustomList = (listId: string): boolean => {
+  try {
+    const lists = getCustomLists();
+    const filtered = lists.filter(l => l.id !== listId);
+    if (filtered.length !== lists.length) {
+      localStorage.setItem(UUR_CUSTOM_LISTS_KEY, JSON.stringify(filtered));
+      return true;
+    }
+    return false;
+  } catch {
+    return false;
+  }
+};
+
+// Get all packages from all lists
+export const getAllPackages = (): UURPackage[] => {
+  const official = getOfficialList().packages;
+  const custom = getCustomLists().flatMap(l => 
+    l.packages.map(p => ({ ...p, listSource: l.name, isOfficial: false }))
+  );
+  return [...official, ...custom];
 };
 
 // === SUBMISSION MANAGEMENT ===
@@ -195,6 +364,7 @@ export interface InstalledUURApp {
   version: string;
   installedAt: string;
   source: 'official' | 'community';
+  listSource?: string;
 }
 
 export const getInstalledUURApps = (): InstalledUURApp[] => {
@@ -206,8 +376,9 @@ export const getInstalledUURApps = (): InstalledUURApp[] => {
   }
 };
 
-export const installUURApp = (appId: string): boolean => {
-  const pkg = UUR_REAL_PACKAGES[appId];
+export const installUURApp = (appId: string, listSource?: string): boolean => {
+  const allPackages = getAllPackages();
+  const pkg = allPackages.find(p => p.id === appId);
   if (!pkg) return false;
   
   const installed = getInstalledUURApps();
@@ -218,7 +389,8 @@ export const installUURApp = (appId: string): boolean => {
     name: pkg.name,
     version: pkg.version,
     installedAt: new Date().toISOString(),
-    source: pkg.isOfficial ? 'official' : 'community'
+    source: pkg.isOfficial ? 'official' : 'community',
+    listSource: listSource || pkg.listSource
   });
   
   localStorage.setItem(UUR_INSTALLED_APPS_KEY, JSON.stringify(installed));
