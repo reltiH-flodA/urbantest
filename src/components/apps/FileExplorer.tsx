@@ -1,255 +1,452 @@
-import { useState, useEffect } from "react";
-import { Folder, File, Trash2, Download, Lock, AlertTriangle, Home, Search, Grid3x3, List, ChevronRight, FileText, Image as ImageIcon, Music, Video, Archive } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { 
+  Folder, File, Trash2, Home, Search, Grid3x3, List, ChevronRight, ChevronDown,
+  FileText, Image as ImageIcon, Music, Video, Archive, Lock, AlertTriangle, 
+  Plus, FolderPlus, Copy, Scissors, Clipboard, Star, StarOff, RotateCcw,
+  MoreVertical, Edit, Download, Upload, RefreshCw, HardDrive, Clock
+} from "lucide-react";
 import { toast } from "sonner";
-import { saveState, loadState } from "@/lib/persistence";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-
-interface FileItem {
-  name: string;
-  type: "file" | "folder";
-  size?: string;
-  modified: string;
-  encrypted?: boolean;
-  content?: string;
-  critical?: boolean;
-  virus?: boolean;
-}
+import { 
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { useVirtualFileSystem, VirtualFile } from "@/hooks/useVirtualFileSystem";
 
 interface FileExplorerProps {
   onLog?: (action: string) => void;
   onVirusDetected?: () => void;
+  initialPath?: string;
 }
 
-const initialFileSystem: Record<string, FileItem[]> = {
-  "/": [
-    { name: "system", type: "folder", modified: "2024-03-15 14:30" },
-    { name: "archive", type: "folder", modified: "2024-03-14 09:15" },
-    { name: "user", type: "folder", modified: "2024-03-16 11:45" },
-    { name: "logs", type: "folder", modified: "2024-03-16 16:22" },
-  ],
-  "/system": [
-    { name: "urbcore.dll", type: "file", size: "2.4 MB", modified: "2024-03-10 08:00", content: "[SYSTEM] Core system library - DO NOT DELETE", critical: true },
-    { name: "bootmgr.sys", type: "file", size: "512 KB", modified: "2024-03-10 08:00", content: "[BOOT] Boot manager configuration", critical: true },
-    { name: "recovery.dat", type: "file", size: "8.1 MB", modified: "2024-03-15 14:30", content: "[RECOVERY] Snapshot data for system restore", critical: true },
-  ],
-  "/archive": [
-    { name: "pressure_001.txt", type: "file", size: "4 KB", modified: "2024-02-28 16:45", content: "EXPERIMENT LOG #001\nSubject: Z-13 'Pressure'\nStatus: Contained\nThreat Level: EXTREME\nNotes: Subject demonstrates adaptive behavior in high-pressure environments. Recommend increased security protocols." },
-    { name: "experiment_log.dat", type: "file", size: "156 KB", modified: "2024-03-01 12:30", encrypted: true, content: "[ENCRYPTED] Access Level 4 Required" },
-    { name: "specimen_data.xlsx", type: "file", size: "2.8 MB", modified: "2024-03-10 09:00", content: "[DATA] Specimen catalog and behavioral patterns" },
-    { name: "VIRUS_SCANNER.exe", type: "file", size: "666 KB", modified: "████-██-██ ██:██", content: "[EXECUTING...]\n\n> Initializing system scan...\n> Analyzing memory...\n> Checking processes...\n\n[!] CRITICAL ERROR: MALICIOUS CODE DETECTED\n[!] SYSTEM CORRUPTION IN PROGRESS\n[!] ATTEMPTING TO QUARANTINE...\n\n[FAILED]\n\n█████████████ SYSTEM COMPROMISED █████████████\n\nAll your base are belong to us.", virus: true },
-    { name: "DELETED_DO_NOT_OPEN.█████", type: "file", size: "??? MB", modified: "████-██-██ ██:██", content: "[FILE CORRUPTED]\n[WARNING: UNAUTHORIZED ACCESS DETECTED]\n[TRACING CONNECTION...]\n\n...they're watching...\n\n[CONNECTION TERMINATED]" },
-    { name: "classified", type: "folder", modified: "2024-02-15 10:00" },
-  ],
-  "/user": [
-    { name: "session.tmp", type: "file", size: "12 KB", modified: "2024-03-16 11:45", content: "[SESSION] Active user session data" },
-    { name: "notes.txt", type: "file", size: "8 KB", modified: "2024-03-15 18:20", content: "Personal Notes:\n- Check pressure readings in Zone 7\n- Review specimen containment protocols\n- Meeting with Dr. Chen at 1400 hours" },
-    { name: "downloads", type: "folder", modified: "2024-03-14 14:00" },
-  ],
-  "/logs": [
-    { name: "system_log.txt", type: "file", size: "234 KB", modified: "2024-03-16 16:22", content: "[16:22:15] System boot successful\n[16:22:18] All core modules loaded\n[16:22:20] Network connection established\n[16:20:45] WARNING: Pressure anomaly detected in Zone 4" },
-    { name: "access_log.txt", type: "file", size: "89 KB", modified: "2024-03-16 15:30", content: "[15:30:12] User 'Aswd' logged in\n[15:28:45] User 'Dr_Chen' accessed Archive\n[15:25:30] Failed login attempt from terminal T-07" },
-  ],
-  "/archive/classified": [
-    { name: "project_hadal.pdf", type: "file", size: "45 MB", modified: "2024-01-20 22:00", encrypted: true, content: "[ENCRYPTED] Top Secret - Clearance Level 5 Required" },
-  ],
+const getFileIcon = (file: VirtualFile, size: "sm" | "md" | "lg" = "md") => {
+  const sizeClass = size === "sm" ? "w-4 h-4" : size === "lg" ? "w-8 h-8" : "w-5 h-5";
+  
+  if (file.type === "folder") {
+    if (file.id === "trash") return <Trash2 className={`${sizeClass} text-muted-foreground`} />;
+    if (file.isSystem) return <Folder className={`${sizeClass} text-amber-500`} />;
+    return <Folder className={`${sizeClass} text-primary`} />;
+  }
+  
+  const ext = file.extension?.toLowerCase();
+  if (ext === 'txt' || ext === 'md') return <FileText className={`${sizeClass} text-blue-400`} />;
+  if (['jpg', 'png', 'gif', 'webp', 'svg'].includes(ext || '')) return <ImageIcon className={`${sizeClass} text-green-400`} />;
+  if (['mp3', 'wav', 'ogg', 'flac'].includes(ext || '')) return <Music className={`${sizeClass} text-purple-400`} />;
+  if (['mp4', 'avi', 'mkv', 'webm'].includes(ext || '')) return <Video className={`${sizeClass} text-red-400`} />;
+  if (['zip', 'rar', '7z', 'tar', 'gz'].includes(ext || '')) return <Archive className={`${sizeClass} text-amber-400`} />;
+  if (ext === 'sys' || ext === 'dll') return <File className={`${sizeClass} text-amber-500`} />;
+  return <File className={`${sizeClass} text-muted-foreground`} />;
 };
 
-const getFileIcon = (item: FileItem) => {
-  if (item.type === "folder") return <Folder className="w-5 h-5" />;
-  const ext = item.name.split('.').pop()?.toLowerCase();
-  if (ext === 'txt') return <FileText className="w-5 h-5" />;
-  if (['jpg', 'png', 'gif'].includes(ext || '')) return <ImageIcon className="w-5 h-5" />;
-  if (['mp3', 'wav'].includes(ext || '')) return <Music className="w-5 h-5" />;
-  if (['mp4', 'avi'].includes(ext || '')) return <Video className="w-5 h-5" />;
-  if (['zip', 'rar'].includes(ext || '')) return <Archive className="w-5 h-5" />;
-  return <File className="w-5 h-5" />;
+const formatFileSize = (bytes: number): string => {
+  if (bytes === 0) return '0 B';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
 };
 
-export const FileExplorer = ({ onLog, onVirusDetected }: FileExplorerProps) => {
-  const [currentPath, setCurrentPath] = useState("/");
-  const [selectedFile, setSelectedFile] = useState<FileItem | null>(null);
-  const [fileSystem, setFileSystem] = useState<Record<string, FileItem[]>>(() => 
-    loadState('file_system', initialFileSystem)
-  );
+const formatDate = (dateString: string): string => {
+  const date = new Date(dateString);
+  return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+};
+
+export const FileExplorer = ({ onLog, onVirusDetected, initialPath }: FileExplorerProps) => {
+  const vfs = useVirtualFileSystem();
+  const [currentFolderId, setCurrentFolderId] = useState("root");
+  const [selectedFiles, setSelectedFiles] = useState<Set<string>>(new Set());
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
   const [searchQuery, setSearchQuery] = useState("");
+  const [showHidden, setShowHidden] = useState(false);
+  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set(["root"]));
+  
+  // Dialogs
+  const [renameDialog, setRenameDialog] = useState<{ open: boolean; file: VirtualFile | null }>({ open: false, file: null });
+  const [newName, setNewName] = useState("");
+  const [createDialog, setCreateDialog] = useState<{ open: boolean; type: "file" | "folder" }>({ open: false, type: "file" });
+  const [newItemName, setNewItemName] = useState("");
+  const [previewFile, setPreviewFile] = useState<VirtualFile | null>(null);
 
+  // Navigate to initial path if provided
   useEffect(() => {
-    saveState('file_system', fileSystem);
-  }, [fileSystem]);
-
-  const currentFiles = fileSystem[currentPath] || [];
-  const filteredFiles = searchQuery 
-    ? currentFiles.filter(f => f.name.toLowerCase().includes(searchQuery.toLowerCase()))
-    : currentFiles;
-
-  const navigateToPath = (path: string) => {
-    setCurrentPath(path);
-    setSelectedFile(null);
-    setSearchQuery("");
-  };
-
-  const openItem = (item: FileItem) => {
-    if (item.virus && onVirusDetected) {
-      toast.error("VIRUS DETECTED!");
-      onVirusDetected();
-      return;
+    if (initialPath) {
+      const file = vfs.getFileByPath(initialPath);
+      if (file && file.type === "folder") {
+        setCurrentFolderId(file.id);
+      }
     }
+  }, [initialPath]);
 
-    if (item.type === "folder") {
-      const newPath = currentPath === "/" ? `/${item.name}` : `${currentPath}/${item.name}`;
-      navigateToPath(newPath);
-      onLog?.(`Opened folder: ${newPath}`);
+  const currentFolder = vfs.getFile(currentFolderId);
+  const currentChildren = vfs.getChildren(currentFolderId, showHidden);
+  const breadcrumbs = vfs.getParents(currentFolderId);
+  if (currentFolder && currentFolder.id !== "root") {
+    breadcrumbs.push(currentFolder);
+  }
+
+  const filteredFiles = searchQuery
+    ? vfs.searchFiles(searchQuery, { includeHidden: showHidden })
+    : currentChildren;
+
+  const navigateTo = useCallback((folderId: string) => {
+    const folder = vfs.getFile(folderId);
+    if (folder && folder.type === "folder") {
+      setCurrentFolderId(folderId);
+      setSelectedFiles(new Set());
+      setSearchQuery("");
+      onLog?.(`Navigated to ${vfs.getPath(folderId)}`);
+    }
+  }, [vfs, onLog]);
+
+  const goUp = useCallback(() => {
+    if (currentFolder && currentFolder.parentId) {
+      navigateTo(currentFolder.parentId);
+    }
+  }, [currentFolder, navigateTo]);
+
+  const toggleFolderExpand = useCallback((folderId: string) => {
+    setExpandedFolders(prev => {
+      const next = new Set(prev);
+      if (next.has(folderId)) {
+        next.delete(folderId);
+      } else {
+        next.add(folderId);
+      }
+      return next;
+    });
+  }, []);
+
+  const handleFileClick = useCallback((file: VirtualFile, event: React.MouseEvent) => {
+    if (event.ctrlKey || event.metaKey) {
+      // Multi-select
+      setSelectedFiles(prev => {
+        const next = new Set(prev);
+        if (next.has(file.id)) {
+          next.delete(file.id);
+        } else {
+          next.add(file.id);
+        }
+        return next;
+      });
     } else {
-      setSelectedFile(item);
-      onLog?.(`Opened file: ${item.name}`);
+      setSelectedFiles(new Set([file.id]));
+      if (file.type === "file") {
+        setPreviewFile(file);
+      }
     }
-  };
+  }, []);
 
-  const goBack = () => {
-    if (currentPath === "/") return;
-    const parts = currentPath.split("/");
-    parts.pop();
-    navigateToPath(parts.join("/") || "/");
-  };
-
-  const deleteItem = (item: FileItem) => {
-    if (item.critical) {
-      toast.error("Cannot delete critical system file!");
-      return;
+  const handleFileDoubleClick = useCallback((file: VirtualFile) => {
+    if (file.type === "folder") {
+      navigateTo(file.id);
+      toggleFolderExpand(file.id);
+    } else {
+      setPreviewFile(file);
+      onLog?.(`Opened file: ${file.name}`);
     }
-    
-    const newFiles = currentFiles.filter(f => f.name !== item.name);
-    setFileSystem({ ...fileSystem, [currentPath]: newFiles });
-    if (selectedFile?.name === item.name) setSelectedFile(null);
-    toast.success(`Deleted ${item.name}`);
-    onLog?.(`Deleted: ${item.name}`);
+  }, [navigateTo, toggleFolderExpand, onLog]);
+
+  const handleDelete = useCallback(() => {
+    selectedFiles.forEach(id => {
+      const file = vfs.getFile(id);
+      if (file) {
+        if (file.isSystem) {
+          toast.error(`Cannot delete system file: ${file.name}`);
+          return;
+        }
+        if (currentFolderId === "trash") {
+          // Permanently delete from trash
+          vfs.deleteFile(id, true);
+          toast.success(`Permanently deleted ${file.name}`);
+        } else {
+          vfs.deleteFile(id);
+          toast.success(`Moved ${file.name} to Trash`);
+        }
+        onLog?.(`Deleted: ${file.name}`);
+      }
+    });
+    setSelectedFiles(new Set());
+    setPreviewFile(null);
+  }, [selectedFiles, vfs, currentFolderId, onLog]);
+
+  const handleCopy = useCallback(() => {
+    const first = Array.from(selectedFiles)[0];
+    if (first) {
+      vfs.copyToClipboard(first);
+      toast.success("Copied to clipboard");
+    }
+  }, [selectedFiles, vfs]);
+
+  const handleCut = useCallback(() => {
+    const first = Array.from(selectedFiles)[0];
+    if (first) {
+      vfs.cutToClipboard(first);
+      toast.success("Cut to clipboard");
+    }
+  }, [selectedFiles, vfs]);
+
+  const handlePaste = useCallback(() => {
+    const result = vfs.pasteFromClipboard(currentFolderId);
+    if (result) {
+      toast.success(`Pasted ${result.name}`);
+      onLog?.(`Pasted: ${result.name}`);
+    } else {
+      toast.error("Nothing to paste or cannot paste here");
+    }
+  }, [vfs, currentFolderId, onLog]);
+
+  const handleRename = useCallback(() => {
+    if (renameDialog.file && newName.trim()) {
+      if (vfs.nameExistsInFolder(newName, renameDialog.file.parentId || "root", renameDialog.file.id)) {
+        toast.error("A file with this name already exists");
+        return;
+      }
+      vfs.renameFile(renameDialog.file.id, newName.trim());
+      toast.success(`Renamed to ${newName}`);
+      onLog?.(`Renamed: ${renameDialog.file.name} → ${newName}`);
+      setRenameDialog({ open: false, file: null });
+      setNewName("");
+    }
+  }, [renameDialog, newName, vfs, onLog]);
+
+  const handleCreate = useCallback(() => {
+    if (newItemName.trim()) {
+      if (vfs.nameExistsInFolder(newItemName, currentFolderId)) {
+        toast.error("A file with this name already exists");
+        return;
+      }
+      if (createDialog.type === "folder") {
+        vfs.createFolder(newItemName.trim(), currentFolderId);
+        toast.success(`Created folder: ${newItemName}`);
+      } else {
+        vfs.createFile(newItemName.trim(), currentFolderId, "");
+        toast.success(`Created file: ${newItemName}`);
+      }
+      onLog?.(`Created: ${newItemName}`);
+      setCreateDialog({ open: false, type: "file" });
+      setNewItemName("");
+    }
+  }, [createDialog, newItemName, vfs, currentFolderId, onLog]);
+
+  const handleToggleFavorite = useCallback((file: VirtualFile) => {
+    if (vfs.isFavorite(file.id)) {
+      vfs.removeFromFavorites(file.id);
+      toast.success(`Removed ${file.name} from favorites`);
+    } else {
+      vfs.addToFavorites(file.id);
+      toast.success(`Added ${file.name} to favorites`);
+    }
+  }, [vfs]);
+
+  // Render folder tree recursively
+  const renderTreeNode = (folderId: string, depth: number = 0) => {
+    const folder = vfs.getFile(folderId);
+    if (!folder) return null;
+
+    const children = vfs.getChildren(folderId, showHidden).filter(f => f.type === "folder");
+    const isExpanded = expandedFolders.has(folderId);
+    const isSelected = currentFolderId === folderId;
+
+    return (
+      <div key={folderId}>
+        <button
+          onClick={() => navigateTo(folderId)}
+          className={`w-full flex items-center gap-1 px-2 py-1.5 text-sm rounded-md transition-all ${
+            isSelected
+              ? 'bg-primary text-primary-foreground'
+              : 'hover:bg-muted'
+          }`}
+          style={{ paddingLeft: `${depth * 12 + 8}px` }}
+        >
+          {children.length > 0 ? (
+            <button
+              onClick={(e) => { e.stopPropagation(); toggleFolderExpand(folderId); }}
+              className="p-0.5 hover:bg-background/20 rounded"
+            >
+              {isExpanded ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+            </button>
+          ) : (
+            <span className="w-4" />
+          )}
+          {getFileIcon(folder, "sm")}
+          <span className="truncate flex-1 text-left">{folder.name}</span>
+          {vfs.isFavorite(folderId) && <Star className="w-3 h-3 text-amber-400 fill-amber-400" />}
+        </button>
+        {isExpanded && children.map(child => renderTreeNode(child.id, depth + 1))}
+      </div>
+    );
   };
 
-  const quickAccessFolders = [
-    { name: "Home", path: "/" },
-    { name: "System", path: "/system" },
-    { name: "Archive", path: "/archive" },
-    { name: "User", path: "/user" },
-    { name: "Logs", path: "/logs" },
+  const quickAccess = [
+    { id: "root", name: "Home", icon: Home },
+    { id: "desktop", name: "Desktop", icon: HardDrive },
+    { id: "documents", name: "Documents", icon: FileText },
+    { id: "downloads", name: "Downloads", icon: Download },
+    { id: "pictures", name: "Pictures", icon: ImageIcon },
+    { id: "trash", name: "Trash", icon: Trash2 },
   ];
-
-  const pathParts = currentPath.split("/").filter(p => p);
 
   return (
     <div className="h-full flex bg-gradient-to-br from-background to-primary/5">
       {/* Sidebar */}
-      <div className="w-64 border-r border-border bg-card/50 backdrop-blur-sm flex flex-col shadow-sm">
-        <div className="p-4 border-b border-border">
-          <h3 className="font-bold flex items-center gap-2 text-lg">
-            <div className="p-1.5 rounded-lg bg-primary/20">
-              <Home className="w-4 h-4 text-primary" />
-            </div>
-            Quick Access
-          </h3>
+      <div className="w-56 border-r border-border bg-card/50 backdrop-blur-sm flex flex-col">
+        {/* Quick Access */}
+        <div className="p-3 border-b border-border">
+          <h3 className="font-semibold text-xs text-muted-foreground mb-2">QUICK ACCESS</h3>
+          <div className="space-y-0.5">
+            {quickAccess.map((item) => {
+              const Icon = item.icon;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => navigateTo(item.id)}
+                  className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-all ${
+                    currentFolderId === item.id
+                      ? 'bg-primary text-primary-foreground'
+                      : 'hover:bg-muted'
+                  }`}
+                >
+                  <Icon className="w-4 h-4" />
+                  <span>{item.name}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
-        <ScrollArea className="flex-1">
-          <div className="p-2 space-y-0.5">
-            {quickAccessFolders.map((folder) => (
-              <button
-                key={folder.path}
-                onClick={() => navigateToPath(folder.path)}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sm transition-all ${
-                  currentPath === folder.path
-                    ? 'bg-primary text-primary-foreground shadow-lg scale-[1.02]'
-                    : 'hover:bg-muted hover:translate-x-1'
-                }`}
-              >
-                <Folder className={`w-4 h-4 ${currentPath === folder.path ? '' : 'text-primary'}`} />
-                <span className="font-medium">{folder.name}</span>
-              </button>
-            ))}
-          </div>
-          
-          <div className="p-3 mt-4 border-t">
-            <div className="text-xs font-bold text-muted-foreground mb-2">STORAGE</div>
-            <div className="space-y-2 text-xs">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Used:</span>
-                <span className="font-mono">42.8 GB</span>
-              </div>
-              <div className="h-2 bg-muted rounded-full overflow-hidden">
-                <div className="h-full bg-primary" style={{ width: '65%' }} />
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Free:</span>
-                <span className="font-mono">23.2 GB</span>
-              </div>
+
+        {/* Favorites */}
+        {vfs.favorites.length > 0 && (
+          <div className="p-3 border-b border-border">
+            <h3 className="font-semibold text-xs text-muted-foreground mb-2">FAVORITES</h3>
+            <div className="space-y-0.5">
+              {vfs.favorites.map(id => {
+                const file = vfs.getFile(id);
+                if (!file) return null;
+                return (
+                  <button
+                    key={id}
+                    onClick={() => file.type === "folder" ? navigateTo(id) : setPreviewFile(file)}
+                    className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm hover:bg-muted transition-all"
+                  >
+                    {getFileIcon(file, "sm")}
+                    <span className="truncate">{file.name}</span>
+                  </button>
+                );
+              })}
             </div>
           </div>
-        </ScrollArea>
+        )}
+
+        {/* Folder Tree */}
+        <div className="flex-1 overflow-hidden">
+          <div className="p-3 pb-1">
+            <h3 className="font-semibold text-xs text-muted-foreground">FOLDERS</h3>
+          </div>
+          <ScrollArea className="h-full pb-20">
+            <div className="px-2 pb-4">
+              {renderTreeNode("root")}
+            </div>
+          </ScrollArea>
+        </div>
+
+        {/* Storage Info */}
+        <div className="p-3 border-t border-border">
+          <div className="text-xs text-muted-foreground mb-1">Storage</div>
+          <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+            <div className="h-full bg-primary" style={{ width: '35%' }} />
+          </div>
+          <div className="text-xs text-muted-foreground mt-1">23.5 GB free of 64 GB</div>
+        </div>
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col min-w-0">
         {/* Toolbar */}
-        <div className="border-b bg-muted/30 p-2 flex items-center gap-2">
-          <Button size="sm" variant="outline" onClick={goBack} disabled={currentPath === "/"}>
+        <div className="border-b bg-muted/30 p-2 flex items-center gap-2 flex-wrap">
+          <Button size="sm" variant="outline" onClick={goUp} disabled={currentFolderId === "root"}>
             <ChevronRight className="w-4 h-4 rotate-180" />
           </Button>
-          <Button size="sm" variant="outline" onClick={() => navigateToPath("/")}>
+          <Button size="sm" variant="outline" onClick={() => navigateTo("root")}>
             <Home className="w-4 h-4" />
           </Button>
+          <Button size="sm" variant="outline" onClick={() => setCurrentFolderId(currentFolderId)}>
+            <RefreshCw className="w-4 h-4" />
+          </Button>
+
+          <div className="h-4 w-px bg-border mx-1" />
           
           {/* Breadcrumb */}
-          <div className="flex items-center gap-1 flex-1">
-            <button
-              onClick={() => navigateToPath("/")}
-              className="px-2 py-1 hover:bg-muted rounded text-sm font-mono"
-            >
-              /
-            </button>
-            {pathParts.map((part, i) => (
-              <div key={i} className="flex items-center gap-1">
+          <div className="flex items-center gap-1 flex-1 min-w-0 overflow-x-auto">
+            <button onClick={() => navigateTo("root")} className="px-2 py-1 hover:bg-muted rounded text-sm shrink-0">/</button>
+            {breadcrumbs.map((crumb, i) => (
+              <div key={crumb.id} className="flex items-center gap-1 shrink-0">
                 <ChevronRight className="w-3 h-3 text-muted-foreground" />
                 <button
-                  onClick={() => {
-                    const path = "/" + pathParts.slice(0, i + 1).join("/");
-                    navigateToPath(path);
-                  }}
-                  className="px-2 py-1 hover:bg-muted rounded text-sm font-mono"
+                  onClick={() => navigateTo(crumb.id)}
+                  className="px-2 py-1 hover:bg-muted rounded text-sm"
                 >
-                  {part}
+                  {crumb.name}
                 </button>
               </div>
             ))}
           </div>
 
           <div className="flex items-center gap-1">
-            <Button
-              size="sm"
-              variant={viewMode === 'grid' ? 'default' : 'outline'}
-              onClick={() => setViewMode('grid')}
-            >
+            <Button size="sm" variant={viewMode === 'grid' ? 'default' : 'outline'} onClick={() => setViewMode('grid')}>
               <Grid3x3 className="w-4 h-4" />
             </Button>
-            <Button
-              size="sm"
-              variant={viewMode === 'list' ? 'default' : 'outline'}
-              onClick={() => setViewMode('list')}
-            >
+            <Button size="sm" variant={viewMode === 'list' ? 'default' : 'outline'} onClick={() => setViewMode('list')}>
               <List className="w-4 h-4" />
             </Button>
           </div>
         </div>
 
-        {/* Search */}
-        <div className="p-3 border-b">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        {/* Action Bar */}
+        <div className="border-b bg-background/50 p-2 flex items-center gap-2 flex-wrap">
+          <Button size="sm" variant="outline" onClick={() => { setCreateDialog({ open: true, type: "folder" }); setNewItemName("New Folder"); }}>
+            <FolderPlus className="w-4 h-4 mr-1" /> New Folder
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => { setCreateDialog({ open: true, type: "file" }); setNewItemName("New File.txt"); }}>
+            <Plus className="w-4 h-4 mr-1" /> New File
+          </Button>
+          
+          <div className="h-4 w-px bg-border mx-1" />
+          
+          <Button size="sm" variant="outline" onClick={handleCopy} disabled={selectedFiles.size === 0}>
+            <Copy className="w-4 h-4" />
+          </Button>
+          <Button size="sm" variant="outline" onClick={handleCut} disabled={selectedFiles.size === 0}>
+            <Scissors className="w-4 h-4" />
+          </Button>
+          <Button size="sm" variant="outline" onClick={handlePaste} disabled={!vfs.clipboard}>
+            <Clipboard className="w-4 h-4" />
+          </Button>
+          <Button size="sm" variant="outline" onClick={handleDelete} disabled={selectedFiles.size === 0}>
+            <Trash2 className="w-4 h-4" />
+          </Button>
+
+          <div className="flex-1" />
+
+          <div className="relative w-48">
+            <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search files..."
-              className="pl-9"
+              placeholder="Search..."
+              className="pl-8 h-8 text-sm"
             />
           </div>
         </div>
@@ -257,143 +454,244 @@ export const FileExplorer = ({ onLog, onVirusDetected }: FileExplorerProps) => {
         {/* File List */}
         <div className="flex-1 flex overflow-hidden">
           <ScrollArea className="flex-1">
-            <div className={`p-3 ${viewMode === 'grid' ? 'grid grid-cols-4 gap-3' : 'space-y-1'}`}>
+            <div className={`p-3 ${viewMode === 'grid' ? 'grid grid-cols-6 gap-2' : 'space-y-0.5'}`}>
+              {currentFolderId === "trash" && vfs.trash.length > 0 && (
+                <div className={`${viewMode === 'grid' ? 'col-span-6' : ''} mb-2`}>
+                  <Button size="sm" variant="outline" onClick={() => vfs.emptyTrash()}>
+                    <Trash2 className="w-4 h-4 mr-1" /> Empty Trash
+                  </Button>
+                  <Button size="sm" variant="outline" className="ml-2" onClick={() => {
+                    vfs.trash.forEach((_, i) => vfs.restoreFromTrash(0));
+                    toast.success("Restored all items");
+                  }}>
+                    <RotateCcw className="w-4 h-4 mr-1" /> Restore All
+                  </Button>
+                </div>
+              )}
+
               {filteredFiles.length === 0 ? (
-                <div className="col-span-4 text-center py-12 text-muted-foreground">
-                  {searchQuery ? 'No files match your search' : 'Folder is empty'}
+                <div className={`${viewMode === 'grid' ? 'col-span-6' : ''} text-center py-12 text-muted-foreground`}>
+                  {searchQuery ? 'No files match your search' : currentFolderId === "trash" ? 'Trash is empty' : 'Folder is empty'}
                 </div>
               ) : (
-                filteredFiles.map((item) => (
+                filteredFiles.map((file) => (
                   viewMode === 'grid' ? (
                     <Card
-                      key={item.name}
-                      className={`p-3 cursor-pointer hover:bg-muted/50 transition-colors ${
-                        selectedFile?.name === item.name ? 'ring-2 ring-primary' : ''
-                      }`}
-                      onClick={() => {
-                        if (item.type === 'folder') openItem(item);
-                        else setSelectedFile(item);
-                      }}
-                      onDoubleClick={() => openItem(item)}
+                      key={file.id}
+                      className={`p-3 cursor-pointer transition-all hover:bg-muted/50 ${
+                        selectedFiles.has(file.id) ? 'ring-2 ring-primary bg-primary/10' : ''
+                      } ${file.isHidden ? 'opacity-60' : ''}`}
+                      onClick={(e) => handleFileClick(file, e)}
+                      onDoubleClick={() => handleFileDoubleClick(file)}
                     >
                       <div className="flex flex-col items-center gap-2 text-center">
-                        <div className="text-primary">{getFileIcon(item)}</div>
-                        <div className="text-xs truncate w-full">{item.name}</div>
-                        {item.encrypted && <Lock className="w-3 h-3 text-amber-500" />}
-                        {item.critical && <AlertTriangle className="w-3 h-3 text-destructive" />}
+                        {getFileIcon(file, "lg")}
+                        <div className="text-xs truncate w-full font-medium">{file.name}</div>
+                        <div className="flex gap-1">
+                          {file.isReadOnly && <Lock className="w-3 h-3 text-amber-500" />}
+                          {file.isSystem && <AlertTriangle className="w-3 h-3 text-amber-500" />}
+                          {vfs.isFavorite(file.id) && <Star className="w-3 h-3 text-amber-400 fill-amber-400" />}
+                        </div>
                       </div>
                     </Card>
                   ) : (
                     <div
-                      key={item.name}
-                      className={`flex items-center gap-3 p-2 rounded cursor-pointer hover:bg-muted/50 transition-colors ${
-                        selectedFile?.name === item.name ? 'bg-muted' : ''
-                      }`}
-                      onClick={() => {
-                        if (item.type === 'folder') openItem(item);
-                        else setSelectedFile(item);
-                      }}
-                      onDoubleClick={() => openItem(item)}
+                      key={file.id}
+                      className={`flex items-center gap-3 p-2 rounded-md cursor-pointer transition-all hover:bg-muted/50 ${
+                        selectedFiles.has(file.id) ? 'bg-primary/10 ring-1 ring-primary' : ''
+                      } ${file.isHidden ? 'opacity-60' : ''}`}
+                      onClick={(e) => handleFileClick(file, e)}
+                      onDoubleClick={() => handleFileDoubleClick(file)}
                     >
-                      <div className="text-primary">{getFileIcon(item)}</div>
+                      {getFileIcon(file)}
                       <div className="flex-1 min-w-0">
-                        <div className="text-sm font-medium truncate">{item.name}</div>
-                        <div className="text-xs text-muted-foreground">{item.size || 'Folder'}</div>
+                        <div className="text-sm font-medium truncate">{file.name}</div>
                       </div>
-                      <div className="text-xs text-muted-foreground">{item.modified}</div>
-                      <div className="flex gap-1">
-                        {item.encrypted && <Lock className="w-4 h-4 text-amber-500" />}
-                        {item.critical && <AlertTriangle className="w-4 h-4 text-destructive" />}
-                        {!item.critical && (
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              deleteItem(item);
-                            }}
-                          >
-                            <Trash2 className="w-4 h-4" />
+                      <div className="text-xs text-muted-foreground w-20 text-right">
+                        {file.type === "folder" ? `${vfs.getChildren(file.id).length} items` : formatFileSize(file.size)}
+                      </div>
+                      <div className="text-xs text-muted-foreground w-32">
+                        {formatDate(file.modifiedAt)}
+                      </div>
+                      <div className="flex gap-1 items-center w-16 justify-end">
+                        {file.isReadOnly && <Lock className="w-3 h-3 text-amber-500" />}
+                        {file.isSystem && <AlertTriangle className="w-3 h-3 text-amber-500" />}
+                        {vfs.isFavorite(file.id) && <Star className="w-3 h-3 text-amber-400 fill-amber-400" />}
+                      </div>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button size="sm" variant="ghost" className="h-7 w-7 p-0">
+                            <MoreVertical className="w-4 h-4" />
                           </Button>
-                        )}
-                      </div>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => { setRenameDialog({ open: true, file }); setNewName(file.name); }}>
+                            <Edit className="w-4 h-4 mr-2" /> Rename
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleToggleFavorite(file)}>
+                            {vfs.isFavorite(file.id) ? (
+                              <><StarOff className="w-4 h-4 mr-2" /> Remove from Favorites</>
+                            ) : (
+                              <><Star className="w-4 h-4 mr-2" /> Add to Favorites</>
+                            )}
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={() => { vfs.copyToClipboard(file.id); toast.success("Copied"); }}>
+                            <Copy className="w-4 h-4 mr-2" /> Copy
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => { vfs.cutToClipboard(file.id); toast.success("Cut"); }}>
+                            <Scissors className="w-4 h-4 mr-2" /> Cut
+                          </DropdownMenuItem>
+                          {!file.isSystem && (
+                            <>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem onClick={() => { setSelectedFiles(new Set([file.id])); handleDelete(); }} className="text-destructive">
+                                <Trash2 className="w-4 h-4 mr-2" /> Delete
+                              </DropdownMenuItem>
+                            </>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   )
                 ))
               )}
+
+              {/* Show trash items when in trash folder */}
+              {currentFolderId === "trash" && vfs.trash.map((item, index) => (
+                viewMode === 'list' && (
+                  <div
+                    key={`trash-${index}`}
+                    className="flex items-center gap-3 p-2 rounded-md cursor-pointer transition-all hover:bg-muted/50 opacity-70"
+                  >
+                    {getFileIcon(item.file)}
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium truncate">{item.file.name}</div>
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      Deleted {formatDate(item.deletedAt)}
+                    </div>
+                    <Button size="sm" variant="outline" onClick={() => { vfs.restoreFromTrash(index); toast.success(`Restored ${item.file.name}`); }}>
+                      <RotateCcw className="w-4 h-4" />
+                    </Button>
+                  </div>
+                )
+              ))}
             </div>
           </ScrollArea>
 
           {/* Preview Panel */}
-          {selectedFile && (
-            <div className="w-80 border-l bg-muted/30 flex flex-col">
-              <div className="p-3 border-b">
-                <h3 className="font-bold text-sm">File Details</h3>
+          {previewFile && (
+            <div className="w-72 border-l bg-card/50 flex flex-col">
+              <div className="p-3 border-b flex items-center justify-between">
+                <h3 className="font-semibold text-sm">Preview</h3>
+                <Button size="sm" variant="ghost" onClick={() => setPreviewFile(null)}>×</Button>
               </div>
-              <ScrollArea className="flex-1 p-4">
-                <div className="space-y-4">
-                  <div className="flex flex-col items-center gap-2 py-4">
-                    <div className="text-primary">{getFileIcon(selectedFile)}</div>
-                    <div className="font-bold text-center break-all">{selectedFile.name}</div>
+              <ScrollArea className="flex-1">
+                <div className="p-4 space-y-4">
+                  <div className="flex flex-col items-center gap-3 py-4">
+                    {getFileIcon(previewFile, "lg")}
+                    <div className="font-semibold text-center break-all text-sm">{previewFile.name}</div>
                   </div>
-                  <div className="space-y-2 text-sm">
+                  
+                  <div className="space-y-2 text-xs">
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Type:</span>
-                      <span>{selectedFile.type === 'folder' ? 'Folder' : 'File'}</span>
+                      <span className="text-muted-foreground">Type</span>
+                      <span>{previewFile.type === 'folder' ? 'Folder' : (previewFile.extension?.toUpperCase() || 'File')}</span>
                     </div>
-                    {selectedFile.size && (
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Size:</span>
-                        <span>{selectedFile.size}</span>
-                      </div>
-                    )}
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Modified:</span>
-                      <span>{selectedFile.modified}</span>
+                      <span className="text-muted-foreground">Size</span>
+                      <span>{previewFile.type === 'folder' ? `${vfs.getChildren(previewFile.id).length} items` : formatFileSize(previewFile.size)}</span>
                     </div>
-                    {selectedFile.encrypted && (
-                      <div className="p-2 bg-amber-500/20 border border-amber-500/30 rounded text-amber-500 text-xs">
-                        <Lock className="w-3 h-3 inline mr-1" />
-                        Encrypted
-                      </div>
-                    )}
-                    {selectedFile.critical && (
-                      <div className="p-2 bg-destructive/20 border border-destructive/30 rounded text-destructive text-xs">
-                        <AlertTriangle className="w-3 h-3 inline mr-1" />
-                        Critical System File
-                      </div>
-                    )}
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Created</span>
+                      <span>{formatDate(previewFile.createdAt)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Modified</span>
+                      <span>{formatDate(previewFile.modifiedAt)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Path</span>
+                      <span className="text-right truncate max-w-32">{vfs.getPath(previewFile.id)}</span>
+                    </div>
                   </div>
-                  {selectedFile.content && (
-                    <div className="pt-4 border-t space-y-2">
-                      <div className="text-xs font-bold mb-2 text-muted-foreground">CONTENT:</div>
-                      <pre className="text-xs font-mono bg-muted p-3 rounded whitespace-pre-wrap">
-                        {selectedFile.content}
-                      </pre>
-                      {selectedFile.type === 'file' && !selectedFile.virus && !selectedFile.critical && (
-                        <Button 
-                          size="sm"
-                          variant="outline"
-                          className="w-full"
-                          onClick={() => {
-                            // Open File Reader with this file
-                            const event = new CustomEvent('openFileReader', { detail: selectedFile.name });
-                            window.dispatchEvent(event);
-                            toast.success(`Opening ${selectedFile.name} in File Reader`);
-                          }}
-                        >
-                          <FileText className="w-3 h-3 mr-2" />
-                          Open with File Reader
-                        </Button>
-                      )}
+
+                  {previewFile.isReadOnly && (
+                    <div className="p-2 bg-amber-500/20 border border-amber-500/30 rounded text-amber-500 text-xs flex items-center gap-2">
+                      <Lock className="w-3 h-3" /> Read Only
                     </div>
                   )}
+                  {previewFile.isSystem && (
+                    <div className="p-2 bg-amber-500/20 border border-amber-500/30 rounded text-amber-500 text-xs flex items-center gap-2">
+                      <AlertTriangle className="w-3 h-3" /> System File
+                    </div>
+                  )}
+
+                  {previewFile.content && previewFile.type === "file" && (
+                    <div className="pt-3 border-t">
+                      <div className="text-xs font-semibold mb-2 text-muted-foreground">CONTENT</div>
+                      <pre className="text-xs font-mono bg-muted p-3 rounded whitespace-pre-wrap max-h-48 overflow-auto">
+                        {previewFile.content}
+                      </pre>
+                    </div>
+                  )}
+
+                  <div className="pt-3 border-t flex flex-col gap-2">
+                    <Button size="sm" variant="outline" className="w-full" onClick={() => handleToggleFavorite(previewFile)}>
+                      {vfs.isFavorite(previewFile.id) ? (
+                        <><StarOff className="w-4 h-4 mr-2" /> Remove Favorite</>
+                      ) : (
+                        <><Star className="w-4 h-4 mr-2" /> Add to Favorites</>
+                      )}
+                    </Button>
+                    {!previewFile.isSystem && (
+                      <Button size="sm" variant="outline" className="w-full" onClick={() => { setRenameDialog({ open: true, file: previewFile }); setNewName(previewFile.name); }}>
+                        <Edit className="w-4 h-4 mr-2" /> Rename
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </ScrollArea>
             </div>
           )}
         </div>
+
+        {/* Status Bar */}
+        <div className="border-t bg-muted/30 px-3 py-1 flex items-center gap-4 text-xs text-muted-foreground">
+          <span>{filteredFiles.length} items</span>
+          {selectedFiles.size > 0 && <span>{selectedFiles.size} selected</span>}
+          {vfs.clipboard && <span className="text-primary">Clipboard: {vfs.clipboard.operation}</span>}
+        </div>
       </div>
+
+      {/* Rename Dialog */}
+      <Dialog open={renameDialog.open} onOpenChange={(open) => setRenameDialog({ open, file: null })}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Rename</DialogTitle>
+          </DialogHeader>
+          <Input value={newName} onChange={(e) => setNewName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleRename()} />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRenameDialog({ open: false, file: null })}>Cancel</Button>
+            <Button onClick={handleRename}>Rename</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Create Dialog */}
+      <Dialog open={createDialog.open} onOpenChange={(open) => setCreateDialog({ open, type: "file" })}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create New {createDialog.type === "folder" ? "Folder" : "File"}</DialogTitle>
+          </DialogHeader>
+          <Input value={newItemName} onChange={(e) => setNewItemName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleCreate()} />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCreateDialog({ open: false, type: "file" })}>Cancel</Button>
+            <Button onClick={handleCreate}>Create</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
