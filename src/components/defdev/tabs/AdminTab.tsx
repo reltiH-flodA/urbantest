@@ -1,67 +1,246 @@
-import { Skull, Zap, RefreshCw, Power, Lock, HardDrive, AlertTriangle, Trash2 } from "lucide-react";
+import { Skull, Zap, RefreshCw, Power, Lock, HardDrive, AlertTriangle, Trash2, Shield, Bomb, MonitorX, Cpu, MemoryStick, Flame, Bug, Radio, Wifi, WifiOff, Eye, EyeOff, Volume2, VolumeX, Moon, Sun, Sparkles } from "lucide-react";
 import { commandQueue } from "@/lib/commandQueue";
 import { toast } from "sonner";
+import { useState } from "react";
 
 const AdminTab = () => {
+  const [showDanger, setShowDanger] = useState(false);
+
   const crashTypes = [
-    { name: "KERNEL_PANIC", color: "red" },
-    { name: "CRITICAL_PROCESS_DIED", color: "red" },
-    { name: "MEMORY_MANAGEMENT", color: "orange" },
-    { name: "SYSTEM_SERVICE_EXCEPTION", color: "orange" },
+    { name: "KERNEL_PANIC", color: "red", icon: Skull, desc: "Fatal kernel error" },
+    { name: "CRITICAL_PROCESS_DIED", color: "red", icon: MonitorX, desc: "Core process failed" },
+    { name: "MEMORY_MANAGEMENT", color: "orange", icon: MemoryStick, desc: "Memory corruption" },
+    { name: "SYSTEM_SERVICE_EXCEPTION", color: "orange", icon: Bug, desc: "Service failure" },
+    { name: "DRIVER_IRQL_NOT_LESS_OR_EQUAL", color: "amber", icon: Cpu, desc: "Driver error" },
+    { name: "PAGE_FAULT_IN_NONPAGED_AREA", color: "amber", icon: HardDrive, desc: "Page fault" },
+    { name: "UNEXPECTED_KERNEL_MODE_TRAP", color: "red", icon: Zap, desc: "Kernel trap" },
+    { name: "INACCESSIBLE_BOOT_DEVICE", color: "red", icon: HardDrive, desc: "Boot failure" },
+  ];
+
+  const lockdownProtocols = [
+    { name: "ALPHA", color: "amber", desc: "Standard lockdown" },
+    { name: "BETA", color: "orange", desc: "Enhanced security" },
+    { name: "GAMMA", color: "red", desc: "Critical threat" },
+    { name: "OMEGA", color: "purple", desc: "Total containment" },
+  ];
+
+  const systemActions = [
+    { 
+      name: "Reboot", 
+      icon: RefreshCw, 
+      color: "blue", 
+      action: () => { commandQueue.queueReboot(); toast.success('Reboot queued'); } 
+    },
+    { 
+      name: "Shutdown", 
+      icon: Power, 
+      color: "purple", 
+      action: () => { commandQueue.queueShutdown(); toast.success('Shutdown queued'); } 
+    },
+    { 
+      name: "Recovery", 
+      icon: HardDrive, 
+      color: "cyan", 
+      action: () => { commandQueue.queueRecovery(); toast.success('Recovery queued'); } 
+    },
+    { 
+      name: "Maintenance", 
+      icon: Shield, 
+      color: "emerald", 
+      action: () => { 
+        localStorage.setItem('urbanshade_maintenance', 'true');
+        toast.success('Maintenance mode enabled');
+        setTimeout(() => window.location.href = '/', 500);
+      } 
+    },
+  ];
+
+  const quickToggles = [
+    { 
+      name: "Network", 
+      iconOn: Wifi, 
+      iconOff: WifiOff, 
+      key: "network_disabled",
+      color: "cyan"
+    },
+    { 
+      name: "Audio", 
+      iconOn: Volume2, 
+      iconOff: VolumeX, 
+      key: "audio_disabled",
+      color: "green"
+    },
+    { 
+      name: "Effects", 
+      iconOn: Sparkles, 
+      iconOff: Eye, 
+      key: "effects_disabled",
+      color: "purple"
+    },
   ];
 
   return (
     <div className="h-full overflow-auto p-4 space-y-6">
-      {/* Crash Triggers */}
-      <div className="p-4 bg-red-500/5 border border-red-500/30 rounded-lg">
-        <div className="flex items-center gap-2 mb-4">
-          <Zap className="w-5 h-5 text-red-400" />
-          <h3 className="font-bold text-red-400">Crash Triggers</h3>
+      {/* Header */}
+      <div className="flex items-center gap-3 pb-4 border-b border-slate-800">
+        <div className="p-3 rounded-xl bg-gradient-to-br from-amber-500/20 to-red-500/20 border border-amber-500/30">
+          <Skull className="w-6 h-6 text-amber-400" />
         </div>
-        <div className="grid grid-cols-2 gap-2">
-          {crashTypes.map(crash => (
+        <div>
+          <h2 className="text-xl font-black text-amber-400">Admin Control Center</h2>
+          <p className="text-xs text-slate-500">Advanced system controls and crash triggers</p>
+        </div>
+      </div>
+
+      {/* System Controls */}
+      <div className="p-4 bg-slate-800/30 border border-slate-700/50 rounded-xl">
+        <h3 className="font-bold text-slate-300 mb-4 flex items-center gap-2">
+          <Power className="w-4 h-4 text-blue-400" /> System Controls
+        </h3>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {systemActions.map(action => (
             <button
-              key={crash.name}
-              onClick={() => { commandQueue.queueCrash(crash.name); toast.success(`Queued: ${crash.name}`); }}
-              className="p-3 bg-red-500/10 hover:bg-red-500/20 border border-red-500/40 rounded-lg text-sm text-red-400 transition-colors"
+              key={action.name}
+              onClick={action.action}
+              className={`p-4 rounded-xl border transition-all hover:scale-105 flex flex-col items-center gap-2 bg-${action.color}-500/10 hover:bg-${action.color}-500/20 border-${action.color}-500/30 text-${action.color}-400`}
             >
-              {crash.name}
+              <action.icon className="w-6 h-6" />
+              <span className="text-sm font-medium">{action.name}</span>
             </button>
           ))}
         </div>
       </div>
 
-      {/* System Controls */}
-      <div className="p-4 bg-slate-800/50 border border-slate-700 rounded-lg">
-        <h3 className="font-bold text-amber-400 mb-4">System Controls</h3>
-        <div className="grid grid-cols-2 gap-2">
-          <button onClick={() => { commandQueue.queueReboot(); toast.success('Reboot queued'); }} className="p-3 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/40 rounded-lg text-sm text-blue-400 flex items-center gap-2">
-            <RefreshCw className="w-4 h-4" /> Reboot
-          </button>
-          <button onClick={() => { commandQueue.queueShutdown(); toast.success('Shutdown queued'); }} className="p-3 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/40 rounded-lg text-sm text-purple-400 flex items-center gap-2">
-            <Power className="w-4 h-4" /> Shutdown
-          </button>
-          <button onClick={() => { commandQueue.queueLockdown('ALPHA'); toast.success('Lockdown queued'); }} className="p-3 bg-orange-500/10 hover:bg-orange-500/20 border border-orange-500/40 rounded-lg text-sm text-orange-400 flex items-center gap-2">
-            <Lock className="w-4 h-4" /> Lockdown
-          </button>
-          <button onClick={() => { commandQueue.queueRecovery(); toast.success('Recovery queued'); }} className="p-3 bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/40 rounded-lg text-sm text-cyan-400 flex items-center gap-2">
-            <HardDrive className="w-4 h-4" /> Recovery
-          </button>
+      {/* Lockdown Protocols */}
+      <div className="p-4 bg-orange-500/5 border border-orange-500/30 rounded-xl">
+        <h3 className="font-bold text-orange-400 mb-4 flex items-center gap-2">
+          <Lock className="w-4 h-4" /> Lockdown Protocols
+        </h3>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {lockdownProtocols.map(protocol => (
+            <button
+              key={protocol.name}
+              onClick={() => { commandQueue.queueLockdown(protocol.name); toast.warning(`Lockdown ${protocol.name} queued`); }}
+              className={`p-3 rounded-xl border transition-all hover:scale-105 bg-${protocol.color}-500/10 hover:bg-${protocol.color}-500/20 border-${protocol.color}-500/30`}
+            >
+              <div className={`text-lg font-black text-${protocol.color}-400 mb-1`}>{protocol.name}</div>
+              <div className="text-xs text-slate-500">{protocol.desc}</div>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Crash Triggers */}
+      <div className="p-4 bg-red-500/5 border border-red-500/30 rounded-xl">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-bold text-red-400 flex items-center gap-2">
+            <Zap className="w-4 h-4" /> Crash Triggers
+          </h3>
+          <span className="text-xs text-red-400/50">⚠️ Will crash the system</span>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+          {crashTypes.map(crash => (
+            <button
+              key={crash.name}
+              onClick={() => { commandQueue.queueCrash(crash.name); toast.error(`Crash queued: ${crash.name}`); }}
+              className={`p-3 rounded-xl border transition-all hover:scale-105 bg-${crash.color}-500/10 hover:bg-${crash.color}-500/20 border-${crash.color}-500/40 text-left`}
+            >
+              <div className="flex items-center gap-2 mb-1">
+                <crash.icon className={`w-4 h-4 text-${crash.color}-400`} />
+                <span className={`text-xs font-bold text-${crash.color}-400`}>{crash.name.slice(0, 12)}...</span>
+              </div>
+              <div className="text-[10px] text-slate-500 truncate">{crash.desc}</div>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Quick Toggles */}
+      <div className="p-4 bg-slate-800/30 border border-slate-700/50 rounded-xl">
+        <h3 className="font-bold text-slate-300 mb-4 flex items-center gap-2">
+          <Radio className="w-4 h-4 text-purple-400" /> Quick Toggles (Simulated)
+        </h3>
+        <div className="flex gap-3">
+          {quickToggles.map(toggle => {
+            const isDisabled = localStorage.getItem(toggle.key) === 'true';
+            const Icon = isDisabled ? toggle.iconOff : toggle.iconOn;
+            return (
+              <button
+                key={toggle.name}
+                onClick={() => {
+                  const newState = !isDisabled;
+                  localStorage.setItem(toggle.key, String(newState));
+                  toast.info(`${toggle.name}: ${newState ? 'Disabled' : 'Enabled'}`);
+                }}
+                className={`flex-1 p-3 rounded-xl border transition-all ${
+                  isDisabled 
+                    ? 'bg-slate-800 border-slate-700 text-slate-500' 
+                    : `bg-${toggle.color}-500/20 border-${toggle.color}-500/40 text-${toggle.color}-400`
+                }`}
+              >
+                <Icon className="w-5 h-5 mx-auto mb-1" />
+                <div className="text-xs font-medium">{toggle.name}</div>
+                <div className="text-[10px] opacity-50">{isDisabled ? 'OFF' : 'ON'}</div>
+              </button>
+            );
+          })}
         </div>
       </div>
 
       {/* Danger Zone */}
-      <div className="p-4 bg-red-500/10 border-2 border-red-500/40 rounded-lg">
-        <div className="flex items-center gap-2 mb-4">
-          <AlertTriangle className="w-5 h-5 text-red-400" />
-          <h3 className="font-bold text-red-400">Danger Zone</h3>
-        </div>
-        <button
-          onClick={() => { if(confirm('WIPE ALL DATA?')) { commandQueue.queueWipe(); toast.error('Wipe queued'); }}}
-          className="w-full p-3 bg-red-500/20 hover:bg-red-500/30 border border-red-500/50 rounded-lg text-red-400 flex items-center justify-center gap-2"
+      <div className="p-4 bg-gradient-to-r from-red-500/10 to-red-900/10 border-2 border-red-500/40 rounded-xl">
+        <button 
+          onClick={() => setShowDanger(!showDanger)}
+          className="w-full flex items-center justify-between"
         >
-          <Trash2 className="w-4 h-4" /> Wipe System Data
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="w-5 h-5 text-red-400 animate-pulse" />
+            <h3 className="font-bold text-red-400">Danger Zone</h3>
+          </div>
+          <span className="text-xs text-red-400/50">{showDanger ? 'Click to hide' : 'Click to reveal'}</span>
         </button>
+        
+        {showDanger && (
+          <div className="mt-4 pt-4 border-t border-red-500/30 space-y-3 animate-fade-in">
+            <button
+              onClick={() => { 
+                if(confirm('⚠️ WIPE ALL SYSTEM DATA?\n\nThis action cannot be undone!')) { 
+                  commandQueue.queueWipe(); 
+                  toast.error('System wipe queued'); 
+                }
+              }}
+              className="w-full p-4 bg-red-500/20 hover:bg-red-500/30 border border-red-500/50 rounded-xl text-red-400 flex items-center justify-center gap-3 transition-all group"
+            >
+              <Trash2 className="w-5 h-5 group-hover:animate-bounce" />
+              <span className="font-bold">Wipe All System Data</span>
+            </button>
+
+            <button
+              onClick={() => { 
+                if(confirm('⚠️ TRIGGER NUCLEAR CRASH?\n\nThis will crash with KERNEL_PANIC!')) { 
+                  commandQueue.queueCrash('KERNEL_PANIC', 'admin.exe'); 
+                  toast.error('Nuclear crash triggered!'); 
+                }
+              }}
+              className="w-full p-4 bg-red-500/20 hover:bg-red-500/30 border border-red-500/50 rounded-xl text-red-400 flex items-center justify-center gap-3 transition-all group"
+            >
+              <Bomb className="w-5 h-5 group-hover:animate-spin" />
+              <span className="font-bold">Nuclear Crash</span>
+            </button>
+
+            <button
+              onClick={() => { 
+                localStorage.clear();
+                toast.error('All storage cleared - reloading...');
+                setTimeout(() => window.location.href = '/', 1000);
+              }}
+              className="w-full p-4 bg-red-500/20 hover:bg-red-500/30 border border-red-500/50 rounded-xl text-red-400 flex items-center justify-center gap-3 transition-all group"
+            >
+              <Flame className="w-5 h-5 group-hover:animate-pulse" />
+              <span className="font-bold">Clear LocalStorage & Reload</span>
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
