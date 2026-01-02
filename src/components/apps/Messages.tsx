@@ -508,6 +508,18 @@ export const Messages = () => {
             </div>
 
             <div className="flex-1 p-6 overflow-y-auto">
+              {/* Admin/Creator Verification Banner */}
+              {(selected.sender_profile?.role === 'admin' || selected.sender_profile?.username?.toLowerCase() === 'aswd') && (
+                <div className="mb-4 px-3 py-2 rounded-lg bg-green-500/15 border border-green-500/30 flex items-center gap-2">
+                  <Shield className="w-4 h-4 text-green-400" />
+                  <span className="text-xs text-green-400 font-medium">
+                    {selected.sender_profile?.username?.toLowerCase() === 'aswd' 
+                      ? 'Verified Creator • This is the developer of UrbanShade OS'
+                      : 'Verified Admin • Messages from this user are legitimate'}
+                  </span>
+                </div>
+              )}
+              
               <pre className="text-sm whitespace-pre-wrap font-sans leading-relaxed">
                 {selected.body}
               </pre>

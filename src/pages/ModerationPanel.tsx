@@ -117,6 +117,18 @@ const DEMO_USERS: UserData[] = [
     warnings: [{ reason: "Demo warning", created_at: new Date().toISOString() }],
     created_at: new Date(Date.now() - 86400000 * 3).toISOString(),
   },
+  {
+    id: "demo-4",
+    user_id: "demo-user-4",
+    username: "DemoAdmin",
+    display_name: "Demo Admin User",
+    role: "admin",
+    clearance: 5,
+    isBanned: false,
+    warningsCount: 0,
+    warnings: [],
+    created_at: new Date(Date.now() - 86400000 * 30).toISOString(),
+  },
 ];
 
 // Hadal Blacksite themed status card
@@ -215,13 +227,14 @@ const StatusCard = ({ status, onUpdate }: { status: StatusEntry; onUpdate: (id: 
 };
 
 // User details panel
-const UserDetailsPanel = ({ user, onClose, onWarn, onBan, onUnban, onOp, isDemo }: { 
+const UserDetailsPanel = ({ user, onClose, onWarn, onBan, onUnban, onOp, onDeop, isDemo }: { 
   user: UserData; 
   onClose: () => void;
   onWarn: () => void;
   onBan: () => void;
   onUnban: () => void;
   onOp: () => void;
+  onDeop: () => void;
   isDemo: boolean;
 }) => {
   const rank = user.personnelRank || (user.role === 'admin' ? 'Admin' : 'Staff');
@@ -328,41 +341,53 @@ const UserDetailsPanel = ({ user, onClose, onWarn, onBan, onUnban, onOp, isDemo 
       </ScrollArea>
 
       {/* Actions */}
-      {user.role !== 'admin' && (
-        <div className="p-4 border-t border-slate-800 space-y-2">
-          <div className="grid grid-cols-2 gap-2">
+      <div className="p-4 border-t border-slate-800 space-y-2">
+        {user.role !== 'admin' ? (
+          <>
+            <div className="grid grid-cols-2 gap-2">
+              <Button 
+                onClick={onWarn}
+                className="bg-amber-600 hover:bg-amber-500 gap-1"
+              >
+                <AlertTriangle className="w-4 h-4" /> Warn
+              </Button>
+              {user.isBanned ? (
+                <Button 
+                  onClick={onUnban}
+                  className="bg-green-600 hover:bg-green-500 gap-1"
+                >
+                  <CheckCircle className="w-4 h-4" /> Unban
+                </Button>
+              ) : (
+                <Button 
+                  onClick={onBan}
+                  className="bg-red-600 hover:bg-red-500 gap-1"
+                >
+                  <Ban className="w-4 h-4" /> Ban
+                </Button>
+              )}
+            </div>
+            
+            {/* OP Button */}
             <Button 
-              onClick={onWarn}
-              className="bg-amber-600 hover:bg-amber-500 gap-1"
+              onClick={onOp}
+              className="w-full bg-purple-600 hover:bg-purple-500 gap-2"
             >
-              <AlertTriangle className="w-4 h-4" /> Warn
+              <Crown className="w-4 h-4" /> Grant Admin (OP)
             </Button>
-            {user.isBanned ? (
-              <Button 
-                onClick={onUnban}
-                className="bg-green-600 hover:bg-green-500 gap-1"
-              >
-                <CheckCircle className="w-4 h-4" /> Unban
-              </Button>
-            ) : (
-              <Button 
-                onClick={onBan}
-                className="bg-red-600 hover:bg-red-500 gap-1"
-              >
-                <Ban className="w-4 h-4" /> Ban
-              </Button>
-            )}
-          </div>
-          
-          {/* OP Button */}
-          <Button 
-            onClick={onOp}
-            className="w-full bg-purple-600 hover:bg-purple-500 gap-2"
-          >
-            <Crown className="w-4 h-4" /> Grant Admin (OP)
-          </Button>
-        </div>
-      )}
+          </>
+        ) : (
+          /* Demote button for admins (demo mode only) */
+          isDemo && (
+            <Button 
+              onClick={onDeop}
+              className="w-full bg-orange-600 hover:bg-orange-500 gap-2"
+            >
+              <UserCog className="w-4 h-4" /> Demote Admin (De-OP)
+            </Button>
+          )
+        )}
+      </div>
     </div>
   );
 };
@@ -835,7 +860,26 @@ const ModerationPanel = () => {
     }, ...prev]);
   };
 
-  // Filter users
+  // Handle demo de-op (demote admin)
+  const handleDemoDeop = () => {
+    if (!selectedUser) return;
+    
+    const updatedUsers = users.map(u => 
+      u.id === selectedUser.id ? { ...u, role: 'user' } : u
+    );
+    setUsers(updatedUsers);
+    toast.success(`[DEMO] Admin demoted: ${selectedUser.username}`);
+    setActivities(prev => [{
+      id: Date.now().toString(),
+      type: "system",
+      user: selectedUser.username,
+      message: `[DEMO] Admin demoted: @${selectedUser.username} is now a regular user`,
+      timestamp: new Date()
+    }, ...prev]);
+    setShowUserDetails(false);
+  };
+
+
   const filteredUsers = users.filter(u => {
     const matchesSearch = u.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (u.display_name?.toLowerCase().includes(searchQuery.toLowerCase()));
@@ -866,21 +910,35 @@ const ModerationPanel = () => {
     <div className="min-h-screen bg-gradient-to-b from-slate-950 via-[#0a0f1a] to-slate-950 text-foreground">
       {/* Demo Mode Banner */}
       {isDemoMode && (
-        <div className="bg-amber-500/20 border-b border-amber-500/30 px-6 py-2">
-          <div className="max-w-[1800px] mx-auto flex items-center justify-between">
-            <div className="flex items-center gap-2 text-amber-400 font-mono text-sm">
-              <Eye className="w-4 h-4" />
-              <span className="font-bold">DEMO MODE</span>
-              <span className="text-amber-400/70">- Actions won't affect cloud. Login as admin for full access.</span>
+        <div className="bg-amber-500/20 border-b-2 border-amber-500/30 px-6 py-4">
+          <div className="max-w-[1800px] mx-auto">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-3 text-amber-400">
+                <div className="p-2 rounded-lg bg-amber-500/20 border border-amber-500/30">
+                  <Eye className="w-5 h-5" />
+                </div>
+                <div>
+                  <span className="font-bold text-lg font-mono">DEMO MODE ACTIVE</span>
+                  <p className="text-xs text-amber-400/70 font-mono">You're viewing a preview of the moderation panel</p>
+                </div>
+              </div>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => window.location.href = '/acc-manage/general'}
+                className="border-amber-500/30 text-amber-400 hover:bg-amber-500/10"
+              >
+                Login as Admin
+              </Button>
             </div>
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={() => window.location.href = '/acc-manage/general'}
-              className="border-amber-500/30 text-amber-400 hover:bg-amber-500/10 text-xs"
-            >
-              Login
-            </Button>
+            <div className="p-3 rounded-lg bg-slate-900/50 border border-slate-700/50">
+              <p className="text-xs text-slate-400 font-mono">
+                <strong className="text-amber-400">⚠️ Notice:</strong> You are not logged in as an admin. 
+                This is a demonstration view with sample data. Any actions you take here (warn, ban, OP, etc.) 
+                will only affect the demo data and <strong>will NOT be saved</strong> to the cloud. 
+                To manage real users, please log in with an admin account.
+              </p>
+            </div>
           </div>
         </div>
       )}
@@ -921,13 +979,13 @@ const ModerationPanel = () => {
                 <Megaphone className="w-4 h-4" /> Broadcast
               </Button>
               
-              {/* Lockdown Status */}
+              {/* Lock Site Status */}
               {lockdownActive ? (
                 <Button 
                   onClick={handleLiftLockdown}
                   className="bg-red-600 hover:bg-red-500 gap-2 animate-pulse"
                 >
-                  <Lock className="w-4 h-4" /> LOCKDOWN ACTIVE
+                  <Lock className="w-4 h-4" /> SITE LOCKED
                 </Button>
               ) : (
                 <Button 
@@ -935,7 +993,7 @@ const ModerationPanel = () => {
                   variant="outline" 
                   className="border-red-500/30 text-red-400 hover:bg-red-500/10 gap-2"
                 >
-                  <AlertOctagon className="w-4 h-4" /> Initiate Lockdown
+                  <AlertOctagon className="w-4 h-4" /> Lock Site
                 </Button>
               )}
               
@@ -1196,9 +1254,9 @@ const ModerationPanel = () => {
                       <span className="text-green-400 font-mono text-sm">ARMED</span>
                     </div>
                     <div className="flex items-center justify-between p-3 rounded bg-slate-800/50">
-                      <span className="text-sm font-mono">Facility Lockdown</span>
+                      <span className="text-sm font-mono">Site Lock</span>
                       <span className={`font-mono text-sm ${lockdownActive ? 'text-red-400 animate-pulse' : 'text-slate-400'}`}>
-                        {lockdownActive ? 'ENGAGED' : 'STANDBY'}
+                        {lockdownActive ? 'ACTIVE' : 'STANDBY'}
                       </span>
                     </div>
                   </div>
@@ -1215,7 +1273,7 @@ const ModerationPanel = () => {
                       className="w-full justify-start gap-2 bg-red-600/20 hover:bg-red-600/30 text-red-400 border border-red-500/30"
                       disabled={lockdownActive}
                     >
-                      <Lock className="w-4 h-4" /> Initiate Facility Lockdown
+                      <Lock className="w-4 h-4" /> Lock Site (Emergency)
                     </Button>
                     <Button 
                       onClick={fetchUsers}
@@ -1272,6 +1330,7 @@ const ModerationPanel = () => {
           onBan={() => setShowBanDialog(true)}
           onUnban={() => isDemoMode ? handleDemoUnban(selectedUser.user_id) : handleUnban(selectedUser.user_id)}
           onOp={() => setShowOpDialog(true)}
+          onDeop={handleDemoDeop}
           isDemo={isDemoMode}
         />
       )}
@@ -1306,7 +1365,7 @@ const ModerationPanel = () => {
 
       {/* Ban Dialog */}
       <Dialog open={showBanDialog} onOpenChange={setShowBanDialog}>
-        <DialogContent className="bg-slate-950 border-red-500/30">
+        <DialogContent className="bg-slate-950 border-red-500/30 max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-red-400 font-mono">
               <Ban className="w-5 h-5" />
@@ -1359,6 +1418,37 @@ const ModerationPanel = () => {
                 </p>
               </div>
             </label>
+
+            {/* Ban Preview */}
+            {banReason && (
+              <div>
+                <label className="text-sm font-mono mb-2 block text-slate-400 flex items-center gap-2">
+                  <Eye className="w-3 h-3" /> BAN MESSAGE PREVIEW
+                </label>
+                <div className="p-4 rounded-lg bg-red-950/50 border-2 border-red-500/50">
+                  <div className="flex items-center gap-3 mb-3">
+                    <Ban className="w-8 h-8 text-red-500" />
+                    <div>
+                      <h4 className="font-bold text-red-400 font-mono">ACCESS DENIED</h4>
+                      <p className="text-xs text-red-400/70 font-mono">Your account has been suspended</p>
+                    </div>
+                  </div>
+                  <div className="p-3 rounded bg-slate-950/50 border border-slate-800">
+                    <p className="text-sm text-slate-300 font-mono mb-2">
+                      <strong>Reason:</strong> {banReason}
+                    </p>
+                    <p className="text-xs text-slate-500 font-mono">
+                      <strong>Duration:</strong> {banDuration === 'perm' ? 'Permanent' : banDuration}
+                    </p>
+                  </div>
+                  {isFakeBan && (
+                    <p className="text-xs text-purple-400 mt-2 font-mono flex items-center gap-1">
+                      <PartyPopper className="w-3 h-3" /> User can click to reveal it's a prank!
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
 
           <DialogFooter>
@@ -1370,16 +1460,16 @@ const ModerationPanel = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Lockdown Dialog */}
+      {/* Lock Site Dialog */}
       <Dialog open={showLockdownDialog} onOpenChange={setShowLockdownDialog}>
         <DialogContent className="bg-slate-950 border-red-500/50">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-red-400 font-mono">
               <AlertOctagon className="w-5 h-5 animate-pulse" />
-              INITIATE LOCKDOWN
+              LOCK SITE
             </DialogTitle>
             <DialogDescription className="font-mono text-slate-400">
-              This will restrict all non-essential operations.
+              Emergency site lock - restricts all access until lifted.
             </DialogDescription>
           </DialogHeader>
           
@@ -1391,7 +1481,7 @@ const ModerationPanel = () => {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="bg-slate-900 border-slate-700">
-                  <SelectItem value="all">All Zones (Facility-Wide)</SelectItem>
+                  <SelectItem value="all">Entire Site (Global Lock)</SelectItem>
                   <SelectItem value="main">Main Site Only</SelectItem>
                   <SelectItem value="docs">Documentation</SelectItem>
                   <SelectItem value="def-dev">DefDev Mode</SelectItem>
@@ -1401,15 +1491,24 @@ const ModerationPanel = () => {
             
             <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/30">
               <p className="text-sm text-red-300 font-mono">
-                ⚠️ WARNING: Lockdown will broadcast emergency alerts to all connected personnel and restrict access to affected zones.
+                ⚠️ EMERGENCY LOCK: When active, users attempting to access the site will see a "Site Under Lock" message. 
+                Only admins can lift the lock. Use this for emergencies only.
               </p>
             </div>
+            
+            {isDemoMode && (
+              <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/30">
+                <p className="text-xs text-amber-400 font-mono flex items-center gap-2">
+                  <Eye className="w-3 h-3" /> DEMO MODE: This won't actually lock the site
+                </p>
+              </div>
+            )}
           </div>
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowLockdownDialog(false)} className="border-slate-700">Cancel</Button>
             <Button onClick={handleLockdown} className="bg-red-600 hover:bg-red-500 gap-2">
-              <Lock className="w-4 h-4" /> CONFIRM LOCKDOWN
+              <Lock className="w-4 h-4" /> CONFIRM LOCK
             </Button>
           </DialogFooter>
         </DialogContent>
